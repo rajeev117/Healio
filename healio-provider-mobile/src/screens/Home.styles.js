@@ -1,0 +1,447 @@
+import { StyleSheet } from 'react-native';
+import { COLORS, SPACING } from '../constants/theme';
+
+// Shared radius scale — keeps every card/tile on the same rounding.
+// Slightly tighter than before: large radii read "playful", these read "product".
+const RADIUS = {
+  card: 20,   // content cards - a touch softer reads warmer
+  tile: 14,   // icon tiles
+};
+
+export default StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  bgBlobOne: {
+    position: 'absolute',
+    top: -50,
+    right: -90,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(130, 28, 3, 0.08)',
+    zIndex: 0,
+  },
+  bgBlobTwo: {
+    position: 'absolute',
+    bottom: 120,
+    left: -110,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(130, 28, 3, 0.04)',
+    zIndex: 0,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  heroCard: {
+    backgroundColor: COLORS.primary,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingHorizontal: SPACING.l,
+    paddingTop: 12,
+    paddingBottom: 18,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerBrandRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingRight: 12,
+  },
+  logoBubble: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  welcomeText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontWeight: '600',
+  },
+  hospitalName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.white,
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  hospitalIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 4,
+  },
+  hospitalId: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '600',
+  },
+  bellBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 11,
+    right: 12,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: COLORS.accent,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+  },
+  earningsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: RADIUS.card,
+    padding: 14,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  earningsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  earningsLabel: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontWeight: '500',
+  },
+  earningsValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORS.white,
+    marginTop: 2,
+    letterSpacing: -0.5,
+  },
+  trendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  trendingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ebfaf0',
+  },
+  sparklineContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 28,
+    marginTop: 12,
+    gap: 6,
+  },
+  sparkBarWrapper: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  // Thin mark, rounded at the data end and square on the baseline: a full-width
+  // block with both ends rounded read as a floating tile, not a measurement.
+  sparkBar: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    width: 10,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
+  sparkBaseline: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    marginTop: 6,
+  },
+  // Zero-revenue days keep a faint stub so the 7-day rhythm stays legible.
+  sparkBarEmpty: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  sparkMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  sparkMetaText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.6)',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  section: {
+    marginTop: 28,
+    paddingHorizontal: SPACING.l,
+  },
+  // Section eyebrow/title — unified with sectionTitle so every section header
+  // reads at the same size/weight (was an 11px uppercase outlier on Quick Actions).
+  sectionHeader: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: -0.1,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    rowGap: 10,
+  },
+  gridItem: {
+    flexBasis: '23%',
+    maxWidth: '23%',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.tile,
+    minHeight: 88,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.tile,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    textAlign: 'center',
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  attentionList: {
+    gap: 10,
+  },
+  attentionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.card,
+    padding: 14,
+  },
+  attentionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attentionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  attentionSub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  overviewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    rowGap: 12,
+  },
+  overviewCard: {
+    flexBasis: '48%',
+    maxWidth: '48%',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.card,
+    padding: 14,
+    overflow: 'hidden',
+  },
+  overviewCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  // Neutral by default. The tint is reserved for a card whose number actually
+  // wants attention - see `alert` on overviewCards.
+  overviewIconAlert: {
+    backgroundColor: COLORS.primarySoft,
+  },
+  overviewCardAlert: {
+    borderColor: COLORS.primarySoft,
+    backgroundColor: '#fffdfc',
+  },
+  overviewIcon: {
+    backgroundColor: COLORS.hairline,
+    width: 34,
+    height: 34,
+    borderRadius: RADIUS.tile,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overviewValue: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: COLORS.text,
+    letterSpacing: -0.4,
+    flexShrink: 1,
+  },
+  // Primary label sits darker than the sublabel for a clearer value → label → caption hierarchy.
+  overviewLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: 10,
+  },
+  overviewSubLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: -0.1,
+  },
+  viewAllLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  // Non-tappable header annotation (e.g. "Live metrics") — must not look like a link.
+  sectionCaption: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  // Empty-state card (Today's Consultations)
+  emptyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.card,
+    padding: 16,
+  },
+  emptyIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  appointmentList: {
+    marginTop: 14,
+    gap: 12,
+  },
+  appointmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.card,
+    padding: 14,
+    gap: 12,
+  },
+  timeBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timeSub: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
+    textTransform: 'uppercase',
+  },
+  timeHour: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  appointmentDetails: {
+    flex: 1,
+  },
+  patientName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  doctorName: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+});

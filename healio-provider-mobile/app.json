@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Healio",
+    "slug": "healio-provider",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Healio Provider uses your location to set your hospital's location on the map.",
+        "NSCameraUsageDescription": "Healio Provider uses the camera to scan a patient's check-in QR code."
+      }
+    },
+    "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#821c03",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Healio Provider uses your location to set your hospital's location."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Healio Provider needs photo access to attach X-ray / scan images to a patient's record.",
+          "cameraPermission": "Healio Provider needs camera access to capture X-ray / scan images for a patient's record."
+        }
+      ],
+      "expo-document-picker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Healio Provider uses the camera to scan a patient's check-in QR code."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ]
+  }
+}

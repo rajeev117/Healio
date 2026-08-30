@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Healio Labs — Connected software for modern healthcare</title>
+<meta name="description" content="Healio Labs builds the connected software layer for modern healthcare — linking doctors, labs, pharmacies and patients in one coordinated flow.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23E1E9BE'/%3E%3Ccircle cx='50' cy='50' r='46' fill='none' stroke='%23C34727' stroke-width='7'/%3E%3Cpath d='M34 30h11v40H34zM55 30h11v40H55zM34 44h32v12H34z' fill='%23398768'/%3E%3C/svg%3E">
+
+<style>
+/* ============================================================
+   Healio Labs — brand tokens
+   Palette derived from "Healio Logo FINAL.svg"
+   ============================================================ */
+:root{
+  --green-700:#2B6B52;
+  --green-600:#398768;
+  --green-500:#4FA07E;
+  --sage-300:#E1E9BE;
+  --sage-100:#EEF2DC;
+  --terra-600:#C34727;
+  --terra-700:#A83B20;
+  --terra-100:#F6DED3;
+
+  --ink-900:#14201B;
+  --ink-700:#33403A;
+  --ink-500:#5C6B63;
+  --ink-300:#97A29B;
+
+  --surface:#FBFBF4;
+  --surface-sage:#F2F5E4;
+  --white:#fff;
+  --border:#E6E8DE;
+
+  --wrap:1200px;
+  --r-sm:10px;
+  --r-md:18px;
+  --r-lg:28px;
+  --r-xl:40px;
+
+  --shadow-sm:0 1px 2px rgba(20,32,27,.04),0 4px 14px rgba(20,32,27,.05);
+  --shadow-md:0 8px 30px rgba(20,32,27,.08);
+  --shadow-lg:0 30px 70px -18px rgba(20,32,27,.28);
+
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--surface);
+  color:var(--ink-700);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,h4{font-family:'Poppins','Inter',sans-serif;color:var(--ink-900);line-height:1.12;letter-spacing:-.02em;font-weight:600}
+a{color:inherit;text-decoration:none}
+img,svg{display:block;max-width:100%}
+::selection{background:var(--sage-300);color:var(--green-700)}
+
+.wrap{width:100%;max-width:var(--wrap);margin-inline:auto;padding-inline:28px}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:9px;
+  font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--green-700);
+  background:var(--sage-100);border:1px solid var(--sage-300);
+  padding:8px 15px;border-radius:999px;
+}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--terra-600);flex:none}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;letter-spacing:.01em;
+  padding:15px 28px;border-radius:999px;border:1.5px solid transparent;
+  cursor:pointer;white-space:nowrap;
+  transition:transform .25s var(--ease),box-shadow .25s var(--ease),background .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease);
+}
+.btn .arw{transition:transform .3s var(--ease)}
+.btn:hover .arw{transform:translateX(4px)}
+.btn-primary{background:var(--terra-600);color:#fff;box-shadow:0 6px 18px -6px rgba(195,71,39,.5)}
+.btn-primary:hover{background:var(--terra-700);transform:translateY(-2px);box-shadow:0 14px 28px -10px rgba(195,71,39,.55)}
+.btn-secondary{background:transparent;color:var(--green-700);border-color:var(--green-600)}
+.btn-secondary:hover{background:var(--green-600);color:#fff;transform:translateY(-2px)}
+.btn-ghost{background:#fff;color:var(--green-700);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.btn-ghost:hover{border-color:var(--green-500);transform:translateY(-2px)}
+.btn-light{background:#fff;color:var(--green-700)}
+.btn-light:hover{transform:translateY(-2px);box-shadow:0 14px 28px -12px rgba(0,0,0,.4)}
+.btn-outline-light{background:transparent;color:#fff;border-color:rgba(255,255,255,.45)}
+.btn-outline-light:hover{background:rgba(255,255,255,.12);border-color:#fff;transform:translateY(-2px)}
+
+/* ---------- nav ---------- */
+.nav{
+  position:sticky;top:0;z-index:60;
+  background:rgba(251,251,244,.72);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid transparent;
+  transition:border-color .3s var(--ease),box-shadow .3s var(--ease),background .3s var(--ease);
+}
+.nav.scrolled{border-bottom-color:var(--border);box-shadow:0 4px 24px -14px rgba(20,32,27,.25)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;gap:28px;padding-block:16px}
+.brand{display:flex;align-items:center;gap:10px;flex:none}
+.brand svg{width:36px;height:36px}
+.brand-txt{font-family:'Poppins',sans-serif;font-weight:600;font-size:21px;color:var(--green-700);letter-spacing:-.02em}
+.brand-txt span{color:var(--ink-300);font-weight:500}
+.nav-links{display:flex;align-items:center;gap:34px}
+.nav-links a{
+  font-size:15px;font-weight:500;color:var(--ink-700);position:relative;padding-block:4px;
+  transition:color .22s var(--ease);
+}
+.nav-links a::after{
+  content:'';position:absolute;left:0;bottom:0;height:1.5px;width:100%;
+  background:var(--green-600);transform:scaleX(0);transform-origin:right;
+  transition:transform .3s var(--ease);
+}
+.nav-links a:hover{color:var(--green-700)}
+.nav-links a:hover::after{transform:scaleX(1);transform-origin:left}
+.nav-actions{display:flex;align-items:center;gap:20px;flex:none}
+.nav-actions .signin{font-size:15px;font-weight:600;color:var(--green-700)}
+.nav-actions .btn{padding:11px 22px;font-size:14.5px}
+.burger{display:none;background:none;border:0;padding:8px;cursor:pointer}
+.burger span{display:block;width:22px;height:2px;background:var(--ink-900);border-radius:2px;transition:transform .3s var(--ease),opacity .2s var(--ease)}
+.burger span+span{margin-top:5px}
+.nav.open .burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.nav.open .burger span:nth-child(2){opacity:0}
+.nav.open .burger span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* mobile menu */
+.mmenu{
+  display:none;position:absolute;top:100%;left:0;right:0;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  box-shadow:0 18px 40px -18px rgba(20,32,27,.3);
+  padding:10px 28px 24px;
+}
+.nav.open .mmenu{display:block;animation:slideDown .32s var(--ease)}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.mmenu a:not(.btn){
+  display:block;padding:14px 0;font-size:16px;font-weight:500;
+  color:var(--ink-700);border-bottom:1px solid var(--border);
+}
+.mmenu a:not(.btn):last-of-type{border-bottom:0}
+.mmenu .btn{margin-top:16px;width:100%}
+/* never leave the panel open once the desktop nav is back */
+@media(min-width:1025px){.mmenu{display:none!important}}
+
+/* ---------- hero ---------- */
+.hero{position:relative;overflow:hidden;background:linear-gradient(168deg,#FBFBF4 0%,#F4F7E6 62%,#EFF3DF 100%)}
+.hero::before,.hero::after{content:'';position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none}
+.hero::before{width:520px;height:520px;background:rgba(79,160,126,.16);top:-190px;right:-90px;animation:drift 22s ease-in-out infinite}
+.hero::after{width:400px;height:400px;background:rgba(195,71,39,.09);bottom:-190px;left:-130px;animation:drift 26s ease-in-out infinite reverse}
+@keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(34px,26px)}}
+
+.hero-in{position:relative;z-index:2;display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;padding-block:92px 100px}
+.hero h1{font-size:clamp(2.6rem,4.7vw,4rem);margin-block:22px 20px;letter-spacing:-.035em}
+.hero h1 em{font-style:normal;color:var(--green-600);position:relative;white-space:nowrap}
+.hero h1 em::after{
+  content:'';position:absolute;left:0;right:0;bottom:.06em;height:.1em;border-radius:99px;
+  background:var(--sage-300);z-index:-1;transform:scaleX(0);transform-origin:left;
+  animation:underline 1s var(--ease) .55s forwards;
+}
+@keyframes underline{to{transform:scaleX(1)}}
+.hero p.lede{font-size:clamp(1.02rem,1.28vw,1.16rem);color:var(--ink-500);max-width:34em;margin-bottom:34px}
+.hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:40px}
+.hero-trust{display:flex;align-items:center;gap:15px}
+.avatars{display:flex}
+.avatars span{
+  width:38px;height:38px;border-radius:50%;border:3px solid var(--surface);
+  margin-left:-11px;box-shadow:var(--shadow-sm);
+}
+.avatars span:first-child{margin-left:0}
+.hero-trust p{font-size:13.8px;color:var(--ink-500);line-height:1.45}
+.hero-trust strong{color:var(--ink-900);font-weight:600}
+
+/* ---------- app mockup ---------- */
+.mock{position:relative;justify-self:center;width:100%;max-width:470px}
+.mock-panel{
+  position:relative;border-radius:var(--r-xl);padding:46px 0;
+  background:linear-gradient(150deg,var(--green-500) 0%,var(--green-600) 46%,var(--green-700) 100%);
+  overflow:hidden;box-shadow:var(--shadow-lg);
+}
+.mock-panel::before,.mock-panel::after{content:'';position:absolute;border-radius:50%}
+.mock-panel::before{width:330px;height:330px;background:rgba(225,233,190,.15);top:-120px;right:-70px}
+.mock-panel::after{width:230px;height:230px;background:rgba(195,71,39,.22);bottom:-110px;left:-70px}
+
+.phone{
+  position:relative;z-index:2;width:290px;margin-inline:auto;
+  background:#fff;border-radius:30px;padding:19px 18px;
+  box-shadow:0 26px 54px -14px rgba(8,26,19,.42);
+  animation:float 7s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-13px)}}
+.ph-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ph-brand{display:flex;align-items:center;gap:7px}
+.ph-brand svg{width:22px;height:22px}
+.ph-brand b{font-family:'Poppins',sans-serif;font-size:14px;color:var(--green-700);font-weight:600}
+.ph-av{width:30px;height:30px;border-radius:50%;background:var(--sage-300);border:2px solid var(--sage-100)}
+.ph-kicker{font-size:10.5px;letter-spacing:.16em;color:var(--ink-300);font-weight:600;text-transform:uppercase}
+.ph-title{font-family:'Poppins',sans-serif;font-size:20px;color:var(--ink-900);font-weight:600;margin-bottom:15px;letter-spacing:-.02em}
+
+.ph-appt{background:var(--green-600);border-radius:18px;padding:13px 14px;margin-bottom:12px}
+.ph-appt .r1{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.ph-appt .r1 span{font-size:9.5px;letter-spacing:.15em;color:var(--sage-300);font-weight:600}
+.ph-appt .r1 b{font-size:9.5px;color:#fff;background:rgba(255,255,255,.22);padding:3px 9px;border-radius:999px;font-weight:600}
+.ph-appt .r2{display:flex;align-items:center;gap:10px}
+.ph-appt .r2 i{width:38px;height:38px;border-radius:50%;background:var(--sage-300);flex:none}
+.ph-appt .r2 strong{display:block;font-family:'Poppins',sans-serif;font-size:14.5px;color:#fff;font-weight:600;line-height:1.3}
+.ph-appt .r2 small{font-size:11.5px;color:var(--sage-300)}
+
+.ph-qr{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;margin-bottom:15px;
+  background:var(--surface-sage);border:1px solid var(--sage-300);border-radius:16px;
+}
+.qr-glyph{width:34px;height:34px;border-radius:8px;background:#fff;flex:none;padding:5px;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:1.5px}
+.qr-glyph i{background:var(--green-700);border-radius:1px}
+.qr-glyph i.off{background:transparent}
+.ph-qr strong{display:block;font-size:12.5px;color:var(--ink-900);font-weight:600;line-height:1.35}
+.ph-qr small{font-size:11px;color:var(--ink-500)}
+
+.ph-flow>span{font-size:9.5px;letter-spacing:.16em;color:var(--ink-300);font-weight:600;text-transform:uppercase;display:block;margin-bottom:8px}
+.ph-row{
+  display:flex;align-items:center;gap:10px;padding:10px 11px;margin-bottom:8px;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+}
+.ph-row .bullet{width:9px;height:9px;border-radius:50%;flex:none}
+.ph-row .txt{flex:1;min-width:0}
+.ph-row strong{display:block;font-size:11.8px;color:var(--ink-900);font-weight:600;line-height:1.35}
+.ph-row small{font-size:10.3px;color:var(--ink-500)}
+.ph-tag{font-size:9.5px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.tag-done{background:#DCEBE3;color:var(--green-700)}
+.tag-prog{background:var(--terra-100);color:var(--terra-700)}
+.tag-ready{background:#DFF0E7;color:var(--green-700)}
+.pulse{position:relative}
+.pulse::after{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:2px solid currentColor;opacity:.55;animation:ping 2s ease-out infinite;
+}
+@keyframes ping{0%{transform:scale(.7);opacity:.6}80%,100%{transform:scale(1.9);opacity:0}}
+
+.mock-badge{
+  position:absolute;z-index:3;display:flex;align-items:center;gap:9px;
+  background:#fff;border-radius:14px;padding:11px 15px;box-shadow:var(--shadow-md);
+  font-size:12.5px;font-weight:600;color:var(--ink-900);white-space:nowrap;
+}
+.mock-badge small{display:block;font-size:10.5px;font-weight:500;color:var(--ink-500)}
+.mock-badge .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none}
+.badge-a{top:64px;left:-26px;animation:float 7s ease-in-out infinite .9s}
+.badge-b{bottom:74px;right:-22px;animation:float 7s ease-in-out infinite 2.1s}
+
+/* ---------- strip ---------- */
+.strip{border-block:1px solid var(--border);background:var(--white)}
+.strip-in{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding-block:34px}
+.stat{text-align:center;position:relative}
+.stat+.stat::before{content:'';position:absolute;left:0;top:12%;height:76%;width:1px;background:var(--border)}
+.stat b{display:block;font-family:'Poppins',sans-serif;font-size:clamp(1.7rem,2.5vw,2.15rem);color:var(--green-700);font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.stat span{font-size:13.2px;color:var(--ink-500)}
+
+/* ---------- sections ---------- */
+section{position:relative}
+.sec{padding-block:104px}
+.sec-head{max-width:660px;margin-bottom:56px}
+.sec-head.center{margin-inline:auto;text-align:center}
+.sec-head h2{font-size:clamp(2rem,3.3vw,2.85rem);margin-block:20px 16px}
+.sec-head p{font-size:1.06rem;color:var(--ink-500)}
+
+/* ---------- products ---------- */
+.products{background:var(--white);border-block:1px solid var(--border)}
+.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.prod{
+  position:relative;border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:38px 36px 36px;background:var(--surface);overflow:hidden;
+  transition:transform .4s var(--ease),box-shadow .4s var(--ease),border-color .4s var(--ease);
+}
+.prod::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(420px 200px at 100% 0%,rgba(79,160,126,.10),transparent 70%);
+  opacity:0;transition:opacity .45s var(--ease);
+}
+.prod:hover{transform:translateY(-6px);box-shadow:var(--shadow-md);border-color:var(--green-500)}
+.prod:hover::after{opacity:1}
+.prod-top{display:flex;align-items:center;gap:13px;margin-bottom:20px}
+.prod-ic{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;flex:none;box-shadow:var(--shadow-sm)}
+.prod-name{font-family:'Poppins',sans-serif;font-size:1.42rem;color:var(--ink-900);font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.prod-for{font-size:12.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--green-600)}
+.prod>p{color:var(--ink-500);margin-bottom:24px;font-size:1.005rem}
+.prod ul{list-style:none;display:grid;gap:12px;margin-bottom:30px}
+.prod li{display:flex;align-items:flex-start;gap:11px;font-size:.955rem;color:var(--ink-700)}
+.prod li svg{width:19px;height:19px;flex:none;margin-top:2px}
+.prod-link{
+  display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:15px;color:var(--green-700);
+}
+.prod-link .arw{transition:transform .3s var(--ease)}
+.prod:hover .prod-link .arw{transform:translateX(5px)}
+.prod-badge{
+  position:absolute;top:24px;right:24px;font-size:10.5px;font-weight:700;letter-spacing:.11em;
+  text-transform:uppercase;padding:6px 12px;border-radius:999px;
+  background:var(--sage-100);color:var(--green-700);border:1px solid var(--sage-300);
+}
+
+/* ---------- flow ---------- */
+.flow-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+.flow-line{
+  position:absolute;top:27px;left:9%;right:9%;height:2px;background:var(--border);z-index:0;border-radius:2px;
+}
+.flow-line i{
+  display:block;height:100%;width:0;border-radius:2px;
+  background:linear-gradient(90deg,var(--green-500),var(--green-600),var(--terra-600));
+  transition:width 1.6s var(--ease) .2s;
+}
+.flow-grid.in .flow-line i{width:100%}
+.step{position:relative;z-index:1;text-align:center}
+.step .num{
+  width:54px;height:54px;border-radius:50%;margin:0 auto 20px;display:grid;place-items:center;
+  background:var(--white);border:2px solid var(--border);
+  font-family:'Poppins',sans-serif;font-weight:600;color:var(--green-700);font-size:1.05rem;
+  transition:border-color .4s var(--ease),transform .4s var(--ease),box-shadow .4s var(--ease);
+}
+.step:hover .num{border-color:var(--green-500);transform:translateY(-4px);box-shadow:var(--shadow-sm)}
+.step h3{font-size:1.14rem;margin-bottom:9px}
+.step p{font-size:.94rem;color:var(--ink-500)}
+
+/* ---------- features ---------- */
+.features{background:var(--white);border-block:1px solid var(--border)}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.feat{
+  padding:30px 28px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);
+  transition:transform .35s var(--ease),border-color .35s var(--ease),box-shadow .35s var(--ease);
+}
+.feat:hover{transform:translateY(-4px);border-color:var(--sage-300);box-shadow:var(--shadow-sm)}
+.feat .ic{
+  width:44px;height:44px;border-radius:13px;display:grid;place-items:center;margin-bottom:17px;
+  background:var(--sage-100);border:1px solid var(--sage-300);
+}
+.feat h3{font-size:1.08rem;margin-bottom:9px}
+.feat p{font-size:.935rem;color:var(--ink-500)}
+
+/* ---------- cta ---------- */
+.cta{padding-block:104px}
+.cta-box{
+  position:relative;border-radius:var(--r-xl);padding:72px 56px;text-align:center;overflow:hidden;
+  background:linear-gradient(140deg,var(--green-600) 0%,var(--green-700) 62%,#204F3D 100%);
+  box-shadow:var(--shadow-lg);
+}
+.cta-box::before,.cta-box::after{content:'';position:absolute;border-radius:50%}
+.cta-box::before{width:420px;height:420px;background:rgba(225,233,190,.11);top:-190px;right:-110px}
+.cta-box::after{width:300px;height:300px;background:rgba(195,71,39,.18);bottom:-160px;left:-90px}
+.cta-box>*{position:relative;z-index:2}
+.cta-box h2{color:#fff;font-size:clamp(2rem,3.4vw,2.9rem);margin-bottom:18px}
+.cta-box p{color:var(--sage-300);font-size:1.08rem;max-width:34em;margin:0 auto 34px}
+.cta-btns{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+.cta-note{margin-top:26px;font-size:13.5px;color:rgba(225,233,190,.72)}
+
+/* ---------- footer ---------- */
+footer{background:var(--white);border-top:1px solid var(--border);padding-block:64px 30px}
+.foot-grid{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:44px;margin-bottom:48px}
+.foot-brand p{font-size:.93rem;color:var(--ink-500);margin-top:16px;max-width:30em}
+.foot-col h4{font-size:12.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-900);margin-bottom:17px;font-weight:600}
+.foot-col a{display:block;font-size:.94rem;color:var(--ink-500);margin-bottom:11px;transition:color .22s var(--ease),transform .22s var(--ease)}
+.foot-col a:hover{color:var(--green-700);transform:translateX(3px)}
+.foot-bot{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+  padding-top:26px;border-top:1px solid var(--border);font-size:13.2px;color:var(--ink-300);
+}
+
+/* ---------- reveal ---------- */
+[data-reveal]{opacity:0;transform:translateY(20px);transition:opacity .75s var(--ease),transform .75s var(--ease);transition-delay:var(--d,0ms)}
+[data-reveal].in{opacity:1;transform:none}
+
+/* ---------- responsive ---------- */
+@media(max-width:1024px){
+  .hero-in{grid-template-columns:1fr;gap:56px;padding-block:72px 84px}
+  .mock{max-width:430px}
+  .prod-grid{grid-template-columns:1fr}
+  .feat-grid{grid-template-columns:repeat(2,1fr)}
+  .foot-grid{grid-template-columns:1fr 1fr;gap:34px}
+  .nav-links{display:none}
+  .burger{display:block}
+}
+@media(max-width:760px){
+  .wrap{padding-inline:20px}
+  /* long brand phrase must be allowed to wrap or it forces horizontal scroll;
+     the underline only reads correctly on a single line, so drop it here */
+  .hero h1 em{white-space:normal}
+  .hero h1 em::after{display:none}
+  .nav-actions .btn{display:none}
+  .nav-actions{gap:12px}
+  .sec{padding-block:76px}
+  .strip-in{grid-template-columns:repeat(2,1fr);gap:28px 12px}
+  .stat:nth-child(3)::before{display:none}
+  .flow-grid{grid-template-columns:1fr;gap:32px;text-align:left}
+  .flow-line{display:none}
+  .step{display:grid;grid-template-columns:54px 1fr;gap:18px;text-align:left;align-items:start}
+  .step .num{margin:0}
+  .feat-grid{grid-template-columns:1fr}
+  .cta-box{padding:52px 26px}
+  .foot-grid{grid-template-columns:1fr}
+  .mock-badge{display:none}
+  .burger{display:block}
+  .nav-actions .signin{display:none}
+}
+
+/* ---------- motion preferences ---------- */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  html{scroll-behavior:auto}
+  [data-reveal]{opacity:1;transform:none}
+  .hero h1 em::after{transform:scaleX(1)}
+  .flow-grid .flow-line i{width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a href="#top" class="brand" aria-label="Healio Labs home">
+      <svg viewBox="0 0 424 391" aria-hidden="true"><circle fill="#e1e9be" cx="213.64" cy="195.38" r="171.77"/><path fill="#c34727" d="M213.08,29.24c-91.94,0-166.47,74.53-166.47,166.47s74.53,166.47,166.47,166.47,166.47-74.53,166.47-166.47S305.02,29.24,213.08,29.24ZM322.11,235.35c-8.7,26.84-26.58,50.09-50.68,64.77-28.04,17.07-61.96,20.96-93.22,10.54-5.65-1.88-10.76-3.94-15.76-6.49-41.49-21.18-66.72-65.06-64.15-111.64.77-13.92,4.11-27.56,9.67-40.46,23.86-55.34,87.29-84.04,144.29-62.86,33.19,12.33,58.76,39.44,69.69,73.03,7.74,23.79,7.9,49.24.16,73.11Z"/><path fill="#c34727" d="M386.26,195.38c0,95.34-77.29,172.62-172.62,172.62S41.01,290.71,41.01,195.38,118.3,22.75,213.64,22.75s172.62,77.29,172.62,172.62ZM383.23,195.8c0-93.72-75.97-169.69-169.69-169.69S43.84,102.08,43.84,195.8s75.97,169.69,169.69,169.69,169.69-75.97,169.69-169.69Z"/><path fill="#398768" d="M215.7,294.48c-.11.42-.56.66-.81.68-.34.04-.86-.24-.98-.75l-4.54-18.82-3.36,10.48c-.16.49-.55.79-.91.86-1.14.21-1.95-2.87-3.06-3.58-.5.47-.89,1.12-1.67,1.12h-41.71c-.58.01-.82-.29-.98-.52-.14-.21.02-1.06.43-1.06l42.41-.14c.44-.88,1.18-1.98,2.04-1.53,1.07.57,1.33,1.9,2.22,2.79l3.84-12.24c.12-.38.56-.48.79-.51.33-.03.79.18.91.69l4.48,18.45,3.27-12.14c.14-.52.43-.87.83-.94,1.52-.27,2.43,5.46,3.65,6.94.53-.31.73-1.33,1.44-1.43h42.68c.67,0,.92.43.93.8,0,.47-.29.85-.95.85l-42.43.02c-.24,1.22-1.17,2.56-2.15,2.46-1.41-1.61-1.75-3.81-2.86-5.8l-3.5,13.33Z"/><path fill="#398768" d="M216.19,165.5c-7.65,3.48-15.25,2.83-21.37-2.85-8.94-8.74-12.93-22.07-14.42-34.42-1,11.16.43,22.3,4.61,32.76l5.15,12.91c2.25,5.65,4.24,11.14,5.36,17.14,2.7,14.49-.51,20.05-.18,25.41.23,3.69-2.46,6.22-6.03,6.2l-18.91-.11c-3.04-.02-5.35-2.31-5.35-5.47l-.03-95.57c0-3.2,2.14-5.87,5.42-5.87h19.81c2.98.02,5.08,2.65,5.08,5.48l.02,31.59c2.72,5.52,8,8.98,14.28,9.29,5.72.29,11.24-1.76,15.95-5.01,1.35-.94,3.2-2.56,3.52-4.19l.17-32.26c.01-2.67,2.51-4.91,5.15-4.91h19.85c3.01,0,5.2,2.63,5.2,5.5l-.03,22.31c-3.9,9.15-14.39,13.12-23.37,15.32-6.88,1.69-13.3,3.74-19.87,6.72Z"/><path fill="#398768" d="M254.55,164.5c-8.15,19.23-23.66,17.98-38.69,28.26-8.02,5.22-13.1,12.68-15.84,22.08.19-6.54,1.13-12.65,1.84-19.01.83-7.52,4.35-13.94,10.02-18.81,7.54-6.48,16.09-8.93,25.4-11.9,8.42-2.62,16.59-5.75,22.19-13.08l-.04,65.36c0,3.19-2.88,5.21-5.77,5.2l-19.22-.05c-2.55,0-5.18-2.12-5.19-4.77l-.07-26.74,8.47-4.66c8.42-4.63,15.75-11.79,16.91-21.89Z"/><circle fill="#398768" cx="212.2" cy="145.7" r="10.97"/></svg>
+      <span class="brand-txt">Healio<span> Labs</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#products">Products</a>
+      <a href="#how">How it works</a>
+      <a href="#platform">Platform</a>
+      <a href="#contact">Company</a>
+    </div>
+    <div class="nav-actions">
+      <a href="#" class="signin">Sign in</a>
+      <a href="#contact" class="btn btn-primary">Book a demo</a>
+      <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mmenu"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+  <div class="mmenu" id="mmenu">
+    <div class="wrap" style="padding-inline:0">
+      <a href="#products">Products</a>
+      <a href="#how">How it works</a>
+      <a href="#platform">Platform</a>
+      <a href="#contact">Company</a>
+      <a href="#">Sign in</a>
+      <a href="#contact" class="btn btn-primary">Book a demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="top">
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <span class="eyebrow" data-reveal><i class="dot"></i>Healthcare software studio</span>
+      <h1 data-reveal style="--d:80ms">Care that <em>follows the patient</em>, not the paperwork.</h1>
+      <p class="lede" data-reveal style="--d:160ms">
+        Healio Labs builds the connected software layer for modern healthcare — a family of
+        products that keeps doctors, labs, pharmacies and patients working from the same
+        record, in real time.
+      </p>
+      <div class="hero-cta" data-reveal style="--d:240ms">
+        <a href="#products" class="btn btn-primary">Explore our products <span class="arw">→</span></a>
+        <a href="#how" class="btn btn-secondary">See how it works</a>
+      </div>
+      <div class="hero-trust" data-reveal style="--d:320ms">
+        <div class="avatars">
+          <span style="background:var(--green-600)"></span>
+          <span style="background:var(--terra-600)"></span>
+          <span style="background:var(--green-500)"></span>
+          <span style="background:var(--sage-300)"></span>
+        </div>
+        <p>Built for clinics and the people they treat —<br><strong>from first visit to follow-up.</strong></p>
+      </div>
+    </div>
+
+    <div class="mock" data-reveal style="--d:200ms">
+      <div class="mock-panel">
+        <div class="phone">
+          <div class="ph-head">
+            <div class="ph-brand">
+              <svg viewBox="0 0 424 391" aria-hidden="true"><circle fill="#e1e9be" cx="213.64" cy="195.38" r="171.77"/><path fill="#c34727" d="M386.26,195.38c0,95.34-77.29,172.62-172.62,172.62S41.01,290.71,41.01,195.38,118.3,22.75,213.64,22.75s172.62,77.29,172.62,172.62ZM383.23,195.8c0-93.72-75.97-169.69-169.69-169.69S43.84,102.08,43.84,195.8s75.97,169.69,169.69,169.69,169.69-75.97,169.69-169.69Z"/><path fill="#398768" d="M216.19,165.5c-7.65,3.48-15.25,2.83-21.37-2.85-8.94-8.74-12.93-22.07-14.42-34.42-1,11.16.43,22.3,4.61,32.76l5.15,12.91c2.25,5.65,4.24,11.14,5.36,17.14,2.7,14.49-.51,20.05-.18,25.41.23,3.69-2.46,6.22-6.03,6.2l-18.91-.11c-3.04-.02-5.35-2.31-5.35-5.47l-.03-95.57c0-3.2,2.14-5.87,5.42-5.87h19.81c2.98.02,5.08,2.65,5.08,5.48l.02,31.59c2.72,5.52,8,8.98,14.28,9.29,5.72.29,11.24-1.76,15.95-5.01,1.35-.94,3.2-2.56,3.52-4.19l.17-32.26c.01-2.67,2.51-4.91,5.15-4.91h19.85c3.01,0,5.2,2.63,5.2,5.5l-.03,22.31c-3.9,9.15-14.39,13.12-23.37,15.32-6.88,1.69-13.3,3.74-19.87,6.72Z"/><path fill="#398768" d="M254.55,164.5c-8.15,19.23-23.66,17.98-38.69,28.26-8.02,5.22-13.1,12.68-15.84,22.08.19-6.54,1.13-12.65,1.84-19.01.83-7.52,4.35-13.94,10.02-18.81,7.54-6.48,16.09-8.93,25.4-11.9,8.42-2.62,16.59-5.75,22.19-13.08l-.04,65.36c0,3.19-2.88,5.21-5.77,5.2l-19.22-.05c-2.55,0-5.18-2.12-5.19-4.77l-.07-26.74,8.47-4.66c8.42-4.63,15.75-11.79,16.91-21.89Z"/><circle fill="#398768" cx="212.2" cy="145.7" r="10.97"/></svg>
+              <b>Healio</b>
+            </div>
+            <div class="ph-av"></div>
+          </div>
+          <span class="ph-kicker">Good morning, Aditi</span>
+          <div class="ph-title">Your care, today</div>
+
+          <div class="ph-appt">
+            <div class="r1"><span>UPCOMING CONSULT</span><b>10:30 AM</b></div>
+            <div class="r2">
+              <i></i>
+              <div><strong>Dr. Meera Nair</strong><small>Cardiology · Room 04</small></div>
+            </div>
+          </div>
+
+          <div class="ph-qr">
+            <div class="qr-glyph" aria-hidden="true">
+              <i></i><i></i><i class="off"></i><i></i><i></i>
+              <i></i><i class="off"></i><i class="off"></i><i class="off"></i><i></i>
+              <i class="off"></i><i class="off"></i><i></i><i></i><i class="off"></i>
+              <i></i><i class="off"></i><i></i><i class="off"></i><i></i>
+              <i></i><i></i><i class="off"></i><i></i><i></i>
+            </div>
+            <div><strong>Your check-in QR</strong><small>Scan at lab or pharmacy</small></div>
+          </div>
+
+          <div class="ph-flow">
+            <span>Care flow</span>
+            <div class="ph-row">
+              <i class="bullet" style="background:var(--green-600)"></i>
+              <div class="txt"><strong>Prescription issued</strong><small>Dr. Nair · today</small></div>
+              <span class="ph-tag tag-done">Done</span>
+            </div>
+            <div class="ph-row">
+              <i class="bullet pulse" style="background:var(--terra-600);color:var(--terra-600)"></i>
+              <div class="txt"><strong>Blood panel at lab</strong><small>Sample collected</small></div>
+              <span class="ph-tag tag-prog">In progress</span>
+            </div>
+            <div class="ph-row">
+              <i class="bullet" style="background:var(--green-500)"></i>
+              <div class="txt"><strong>Pharmacy pickup</strong><small>Ready in 20 min</small></div>
+              <span class="ph-tag tag-ready">Ready</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mock-badge badge-a">
+        <span class="ic" style="background:var(--sage-100)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        <span>One scan<small>Lab &amp; pharmacy linked</small></span>
+      </div>
+      <div class="mock-badge badge-b">
+        <span class="ic" style="background:var(--terra-100)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A83B20" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 10-12h-8l1-8Z"/></svg>
+        </span>
+        <span>Real-time<small>Every role in sync</small></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ STAT STRIP ============
+     NOTE: structural facts about the platform, not traction claims.
+     Swap in real adoption metrics when you have them. -->
+<section class="strip">
+  <div class="wrap strip-in">
+    <div class="stat" data-reveal><b><span data-count="2">0</span></b><span>Products in the family</span></div>
+    <div class="stat" data-reveal style="--d:90ms"><b><span data-count="4">0</span></b><span>Care roles connected</span></div>
+    <div class="stat" data-reveal style="--d:180ms"><b><span data-count="1">0</span> QR</b><span>For the whole journey</span></div>
+    <div class="stat" data-reveal style="--d:270ms"><b>Real&#8209;time</b><span>Updates across every app</span></div>
+  </div>
+</section>
+
+<!-- ============ PRODUCTS ============ -->
+<section class="sec products" id="products">
+  <div class="wrap">
+    <div class="sec-head center" data-reveal>
+      <span class="eyebrow"><i class="dot"></i>Our products</span>
+      <h2>Two apps. One continuous record.</h2>
+      <p>Each product solves one side of the same problem — and because they share a single
+         patient record, the hand-off between them stops being a phone call.</p>
+    </div>
+
+    <div class="prod-grid">
+      <article class="prod" data-reveal>
+        <span class="prod-badge">Flagship</span>
+        <div class="prod-top">
+          <span class="prod-ic" style="background:var(--sage-100);border:1px solid var(--sage-300)">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M11 18h2"/></svg>
+          </span>
+          <div>
+            <div class="prod-name">Healio</div>
+            <div class="prod-for">For patients</div>
+          </div>
+        </div>
+        <p>The patient's whole journey in one place — find a doctor, book, check in with a QR,
+           and follow every prescription, test and pickup without chasing anyone.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Doctor discovery and appointment booking</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>QR check-in that carries the whole visit</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Prescriptions and lab results, always accessible</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Healio Plus wallet and membership</li>
+        </ul>
+        <a href="#" class="prod-link">Explore Healio <span class="arw">→</span></a>
+      </article>
+
+      <article class="prod" data-reveal style="--d:120ms">
+        <div class="prod-top">
+          <span class="prod-ic" style="background:var(--terra-100);border:1px solid #EDCBBC">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#A83B20" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+          </span>
+          <div>
+            <div class="prod-name">Healio Provider</div>
+            <div class="prod-for">For doctors, labs &amp; pharmacies</div>
+          </div>
+        </div>
+        <p>One app for everyone on the clinical side. Doctors consult and upload the
+           prescription; lab and pharmacy staff scan the patient in front of them and the
+           order creates itself.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Consult queue and patient dossier</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Prescription upload — no forms, no routing</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Scan-to-order for lab and pharmacy desks</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#398768" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Results and dispensing pushed back instantly</li>
+        </ul>
+        <a href="#" class="prod-link">Explore Healio Provider <span class="arw">→</span></a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="sec" id="how">
+  <div class="wrap">
+    <div class="sec-head center" data-reveal>
+      <span class="eyebrow"><i class="dot"></i>How it works</span>
+      <h2>The hand-off, without the clipboard.</h2>
+      <p>The patient's QR is the thread. Staff only ever see work for someone standing in
+         front of them — never a queue of guesses.</p>
+    </div>
+
+    <div class="flow-grid" id="flow">
+      <div class="flow-line" aria-hidden="true"><i></i></div>
+      <div class="step" data-reveal>
+        <div class="num">1</div>
+        <h3>Book &amp; check in</h3>
+        <p>The patient books in Healio and arrives with a check-in QR on their phone.</p>
+      </div>
+      <div class="step" data-reveal style="--d:120ms">
+        <div class="num">2</div>
+        <h3>Consult</h3>
+        <p>The doctor consults and uploads the prescription. That is the whole job — no flags, no routing.</p>
+      </div>
+      <div class="step" data-reveal style="--d:240ms">
+        <div class="num">3</div>
+        <h3>Scan</h3>
+        <p>At the lab or pharmacy, staff scan the same QR and pick the visit. The order is created on the spot.</p>
+      </div>
+      <div class="step" data-reveal style="--d:360ms">
+        <div class="num">4</div>
+        <h3>Close the loop</h3>
+        <p>Results and dispensing flow straight back to the doctor and the patient, in real time.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PLATFORM ============ -->
+<section class="sec features" id="platform">
+  <div class="wrap">
+    <div class="sec-head center" data-reveal>
+      <span class="eyebrow"><i class="dot"></i>The platform</span>
+      <h2>Built once, shared by every product.</h2>
+      <p>Our apps sit on one platform — the same identity, the same permissions, the same
+         live data. That is what makes the hand-offs feel effortless.</p>
+    </div>
+
+    <div class="feat-grid">
+      <div class="feat" data-reveal>
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg></span>
+        <h3>One patient identity</h3>
+        <p>A single record follows the patient across every app and every desk — no re-registration, no duplicate files.</p>
+      </div>
+      <div class="feat" data-reveal style="--d:90ms">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 10-12h-8l1-8Z"/></svg></span>
+        <h3>Real-time by default</h3>
+        <p>When a result is filed or a prescription dispensed, every screen that cares updates at once.</p>
+      </div>
+      <div class="feat" data-reveal style="--d:180ms">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></span>
+        <h3>Privacy-first access</h3>
+        <p>Every role sees only what its job requires. Access rules are enforced at the data layer, not the screen.</p>
+      </div>
+      <div class="feat" data-reveal style="--d:270ms">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        <h3>A role for every desk</h3>
+        <p>Doctors, lab technicians, pharmacy assistants and hospital admins each get a purpose-built view.</p>
+      </div>
+      <div class="feat" data-reveal style="--d:360ms">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>
+        <h3>Made for real clinic days</h3>
+        <p>Designed around walk-ins, queues and paper prescriptions — how clinics actually run, not how software wishes they did.</p>
+      </div>
+      <div class="feat" data-reveal style="--d:450ms">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#2B6B52" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 10l7-7 7 7"/></svg></span>
+        <h3>Room to grow</h3>
+        <p>New products join the family without a migration — they inherit the same record and the same rules on day one.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta" id="contact">
+  <div class="wrap">
+    <div class="cta-box" data-reveal>
+      <h2>See the hand-off in action.</h2>
+      <p>Fifteen minutes is enough to walk a patient from booking through consult to
+         pharmacy pickup — using your own clinic's flow.</p>
+      <div class="cta-btns">
+        <a href="#" class="btn btn-light">Book a demo <span class="arw">→</span></a>
+        <a href="#products" class="btn btn-outline-light">Browse the products</a>
+      </div>
+      <p class="cta-note">No commitment — we'll show you the flow and answer questions.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a href="#top" class="brand" aria-label="Healio Labs home">
+          <svg viewBox="0 0 424 391" aria-hidden="true"><circle fill="#e1e9be" cx="213.64" cy="195.38" r="171.77"/><path fill="#c34727" d="M386.26,195.38c0,95.34-77.29,172.62-172.62,172.62S41.01,290.71,41.01,195.38,118.3,22.75,213.64,22.75s172.62,77.29,172.62,172.62ZM383.23,195.8c0-93.72-75.97-169.69-169.69-169.69S43.84,102.08,43.84,195.8s75.97,169.69,169.69,169.69,169.69-75.97,169.69-169.69Z"/><path fill="#398768" d="M216.19,165.5c-7.65,3.48-15.25,2.83-21.37-2.85-8.94-8.74-12.93-22.07-14.42-34.42-1,11.16.43,22.3,4.61,32.76l5.15,12.91c2.25,5.65,4.24,11.14,5.36,17.14,2.7,14.49-.51,20.05-.18,25.41.23,3.69-2.46,6.22-6.03,6.2l-18.91-.11c-3.04-.02-5.35-2.31-5.35-5.47l-.03-95.57c0-3.2,2.14-5.87,5.42-5.87h19.81c2.98.02,5.08,2.65,5.08,5.48l.02,31.59c2.72,5.52,8,8.98,14.28,9.29,5.72.29,11.24-1.76,15.95-5.01,1.35-.94,3.2-2.56,3.52-4.19l.17-32.26c.01-2.67,2.51-4.91,5.15-4.91h19.85c3.01,0,5.2,2.63,5.2,5.5l-.03,22.31c-3.9,9.15-14.39,13.12-23.37,15.32-6.88,1.69-13.3,3.74-19.87,6.72Z"/><path fill="#398768" d="M254.55,164.5c-8.15,19.23-23.66,17.98-38.69,28.26-8.02,5.22-13.1,12.68-15.84,22.08.19-6.54,1.13-12.65,1.84-19.01.83-7.52,4.35-13.94,10.02-18.81,7.54-6.48,16.09-8.93,25.4-11.9,8.42-2.62,16.59-5.75,22.19-13.08l-.04,65.36c0,3.19-2.88,5.21-5.77,5.2l-19.22-.05c-2.55,0-5.18-2.12-5.19-4.77l-.07-26.74,8.47-4.66c8.42-4.63,15.75-11.79,16.91-21.89Z"/><circle fill="#398768" cx="212.2" cy="145.7" r="10.97"/></svg>
+          <span class="brand-txt">Healio<span> Labs</span></span>
+        </a>
+        <p>Connected software for modern healthcare. We build the products that keep a
+           patient's care moving — from the first booking to the last follow-up.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Products</h4>
+        <a href="#products">Healio</a>
+        <a href="#products">Healio Provider</a>
+        <a href="#platform">Platform</a>
+      </div>
+      <div class="foot-col">
+        <h4>Company</h4>
+        <a href="#">About us</a>
+        <a href="#">Careers</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <div class="foot-col">
+        <h4>Resources</h4>
+        <a href="#how">How it works</a>
+        <a href="#">Support</a>
+        <a href="#">Privacy</a>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <span>© <span id="yr">2026</span> Healio Labs. All rights reserved.</span>
+      <span>Made for clinics and the people they treat.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* year */
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  /* nav shadow on scroll */
+  var nav = document.getElementById('nav');
+  var onScroll = function(){ nav.classList.toggle('scrolled', window.scrollY > 8); };
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  /* mobile menu */
+  var burger = document.getElementById('burger');
+  var mmenu = document.getElementById('mmenu');
+  function setMenu(open){
+    nav.classList.toggle('open', open);
+    burger.setAttribute('aria-expanded', String(open));
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  }
+  burger.addEventListener('click', function(){ setMenu(!nav.classList.contains('open')); });
+  mmenu.addEventListener('click', function(e){ if (e.target.tagName === 'A') setMenu(false); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') setMenu(false); });
+
+  /* count-up */
+  function countUp(el){
+    var target = parseFloat(el.dataset.count), dur = 1100, t0 = null;
+    if (reduced){ el.textContent = target; return; }
+    function tick(ts){
+      if (t0 === null) t0 = ts;
+      var p = Math.min((ts - t0) / dur, 1);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* reveal on scroll */
+  if (!('IntersectionObserver' in window) || reduced){
+    document.querySelectorAll('[data-reveal]').forEach(function(el){ el.classList.add('in'); });
+    document.querySelectorAll('[data-count]').forEach(function(el){ el.textContent = el.dataset.count; });
+    var fg = document.getElementById('flow'); if (fg) fg.classList.add('in');
+    return;
+  }
+
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      e.target.querySelectorAll('[data-count]').forEach(countUp);
+      io.unobserve(e.target);
+    });
+  }, {threshold:0.15, rootMargin:'0px 0px -60px 0px'});
+
+  document.querySelectorAll('[data-reveal]').forEach(function(el){ io.observe(el); });
+
+  /* flow connector line */
+  var flow = document.getElementById('flow');
+  if (flow){
+    var fio = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ e.target.classList.add('in'); fio.unobserve(e.target); }
+      });
+    }, {threshold:0.35});
+    fio.observe(flow);
+  }
+})();
+</script>
+</body>
+</html>

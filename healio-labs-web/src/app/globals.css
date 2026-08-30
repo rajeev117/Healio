@@ -1,0 +1,618 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Healio Labs — monochrome glassmorphism design system
+
+   The palette is a single ink colour over a ground. Light and dark are the
+   same system with the ink/ground relationship inverted, so every component
+   is written once against semantic tokens and never against "white".
+   ============================================================ */
+
+@theme {
+  /* `ink` is the one colour in the system. It resolves to white on dark
+     grounds and near-black on light ones, so `bg-ink/10`, `border-ink/12`
+     and `text-ink/70` all flip with the theme automatically. */
+  --color-ink: rgb(var(--fg-rgb));
+
+  /* graphite ramp — fixed reference scale, not theme-dependent */
+  --color-graphite-900: #0e0e11;
+  --color-graphite-800: #17171b;
+  --color-graphite-700: #212127;
+  --color-graphite-600: #2e2e36;
+  --color-graphite-500: #43434d;
+  --color-graphite-400: #5e5e69;
+  --color-graphite-300: #8b8b95;
+  --color-graphite-200: #b7b7bf;
+  --color-graphite-100: #dedee3;
+  --color-graphite-50: #f4f4f6;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}
+
+/* ------------------------------------------------------------
+   Dark is the default. Light applies when the visitor's system asks
+   for it, or when they pick it explicitly with the toggle.
+   ------------------------------------------------------------ */
+
+:root {
+  color-scheme: dark;
+
+  --fg-rgb: 255 255 255;
+
+  --ground-sunken: #050506;
+  --ground-base: #0a0a0b;
+  --ground-raised: #101013;
+  --ground-elevated: #16161a;
+
+  --ink-1: rgb(var(--fg-rgb) / 1);
+  --ink-2: rgb(var(--fg-rgb) / 0.7);
+  --ink-3: rgb(var(--fg-rgb) / 0.46);
+  --ink-4: rgb(var(--fg-rgb) / 0.3);
+
+  /* inverted solid — primary buttons, selected chips */
+  --solid-bg: #ffffff;
+  --solid-fg: #0a0a0b;
+
+  --glass-01: rgb(255 255 255 / 0.035);
+  --glass-02: rgb(255 255 255 / 0.055);
+  --glass-03: rgb(255 255 255 / 0.085);
+  --glass-04: rgb(255 255 255 / 0.13);
+
+  --line-hairline: rgb(var(--fg-rgb) / 0.07);
+  --line-subtle: rgb(var(--fg-rgb) / 0.12);
+  --line-strong: rgb(var(--fg-rgb) / 0.22);
+
+  --glass-edge: rgb(255 255 255 / 0.07);
+  --glass-edge-2: rgb(255 255 255 / 0.12);
+  --glass-edge-3: rgb(255 255 255 / 0.2);
+  --glass-shadow: 0 18px 48px -12px rgb(0 0 0 / 0.42);
+  --glass-shadow-lg: 0 32px 80px -16px rgb(0 0 0 / 0.55);
+  --glass-shadow-hover: 0 34px 76px -14px rgb(0 0 0 / 0.58);
+  --glass-shadow-pill: 0 6px 18px -4px rgb(0 0 0 / 0.3);
+  --glass-highlight: inset 0 1px 0 0 rgb(255 255 255 / 0.11);
+  --glass-highlight-2: inset 0 1px 0 0 rgb(255 255 255 / 0.14);
+  --glass-highlight-3: inset 0 1px 0 0 rgb(255 255 255 / 0.18);
+
+  /* soft radial light — used extremely sparingly */
+  --glow: rgb(255 255 255 / 0.16);
+  --glow-soft: rgb(255 255 255 / 0.08);
+
+  /* abstract project visuals */
+  --viz-from: #252529;
+  --viz-to: #09090b;
+  --viz-glow: rgb(255 255 255 / 0.17);
+  --viz-edge: rgb(255 255 255 / 0.09);
+
+  /* device mockups */
+  --mock-from: #1b1b21;
+  --mock-to: #0e0e12;
+  --mock-phone-from: #202027;
+  --mock-phone-to: #0b0b0e;
+
+  --nav-scrolled: rgb(255 255 255 / 0.055);
+
+  --grain-opacity: 0.055;
+  --grain-blend: overlay;
+
+  /* type ramp — fluid from mobile to desktop */
+  --step-display-xxl: clamp(3.5rem, 11.4vw, 6.75rem);
+  --step-display-xl: clamp(2.625rem, 6.6vw, 5.25rem);
+  --step-display-l: clamp(2rem, 4.9vw, 4rem);
+  --step-h-xl: clamp(2rem, 3.8vw, 3rem);
+  --step-h-l: clamp(1.75rem, 3vw, 2.5rem);
+  --step-h-m: clamp(1.375rem, 2.3vw, 2rem);
+  --step-h-s: clamp(1.3125rem, 1.7vw, 1.5rem);
+  --step-h-xs: clamp(1.125rem, 1.35vw, 1.25rem);
+  --step-body-l: clamp(1rem, 1.25vw, 1.25rem);
+  --step-body-m: clamp(0.9375rem, 1.05vw, 1.0625rem);
+
+  /* motion */
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --dur-instant: 120ms;
+  --dur-quick: 200ms;
+  --dur-base: 320ms;
+  --dur-slow: 480ms;
+  --dur-reveal: 700ms;
+
+  /* layout */
+  --gutter: clamp(1.5rem, 5vw, 7.5rem);
+  --max: 1200px;
+}
+
+/* The light palette is defined once and applied from two selectors: the
+   system preference (when no explicit choice has been made) and the
+   explicit choice itself. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --fg-rgb: 12 12 14;
+
+    --ground-sunken: #e9e9ee;
+    --ground-base: #f2f2f5;
+    --ground-raised: #eaeaef;
+    --ground-elevated: #ffffff;
+
+    --ink-2: rgb(var(--fg-rgb) / 0.72);
+    --ink-3: rgb(var(--fg-rgb) / 0.58);
+    --ink-4: rgb(var(--fg-rgb) / 0.38);
+
+    --solid-bg: #0c0c0e;
+    --solid-fg: #ffffff;
+
+    --glass-01: rgb(255 255 255 / 0.55);
+    --glass-02: rgb(255 255 255 / 0.72);
+    --glass-03: rgb(255 255 255 / 0.88);
+    --glass-04: rgb(255 255 255 / 0.96);
+
+    --line-hairline: rgb(var(--fg-rgb) / 0.1);
+    --line-subtle: rgb(var(--fg-rgb) / 0.16);
+    --line-strong: rgb(var(--fg-rgb) / 0.3);
+
+    --glass-edge: rgb(var(--fg-rgb) / 0.08);
+    --glass-edge-2: rgb(var(--fg-rgb) / 0.12);
+    --glass-edge-3: rgb(var(--fg-rgb) / 0.18);
+    --glass-shadow: 0 18px 44px -14px rgb(12 12 20 / 0.14);
+    --glass-shadow-lg: 0 30px 70px -18px rgb(12 12 20 / 0.18);
+    --glass-shadow-hover: 0 32px 68px -16px rgb(12 12 20 / 0.22);
+    --glass-shadow-pill: 0 6px 16px -4px rgb(12 12 20 / 0.12);
+    --glass-highlight: inset 0 1px 0 0 rgb(255 255 255 / 0.9);
+    --glass-highlight-2: inset 0 1px 0 0 rgb(255 255 255 / 0.95);
+    --glass-highlight-3: inset 0 1px 0 0 rgb(255 255 255 / 1);
+
+    --glow: rgb(255 255 255 / 0.95);
+    --glow-soft: rgb(255 255 255 / 0.65);
+
+    --viz-from: #ffffff;
+    --viz-to: #dcdce3;
+    --viz-glow: rgb(255 255 255 / 0.9);
+    --viz-edge: rgb(var(--fg-rgb) / 0.1);
+
+    --mock-from: #ffffff;
+    --mock-to: #e4e4eb;
+    --mock-phone-from: #ffffff;
+    --mock-phone-to: #e1e1e9;
+
+    --nav-scrolled: rgb(255 255 255 / 0.72);
+
+    --grain-opacity: 0.045;
+    --grain-blend: multiply;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --fg-rgb: 12 12 14;
+
+  --ground-sunken: #e9e9ee;
+  --ground-base: #f2f2f5;
+  --ground-raised: #eaeaef;
+  --ground-elevated: #ffffff;
+
+  --ink-2: rgb(var(--fg-rgb) / 0.72);
+  --ink-3: rgb(var(--fg-rgb) / 0.58);
+  --ink-4: rgb(var(--fg-rgb) / 0.38);
+
+  --solid-bg: #0c0c0e;
+  --solid-fg: #ffffff;
+
+  --glass-01: rgb(255 255 255 / 0.55);
+  --glass-02: rgb(255 255 255 / 0.72);
+  --glass-03: rgb(255 255 255 / 0.88);
+  --glass-04: rgb(255 255 255 / 0.96);
+
+  --line-hairline: rgb(var(--fg-rgb) / 0.1);
+  --line-subtle: rgb(var(--fg-rgb) / 0.16);
+  --line-strong: rgb(var(--fg-rgb) / 0.3);
+
+  --glass-edge: rgb(var(--fg-rgb) / 0.08);
+  --glass-edge-2: rgb(var(--fg-rgb) / 0.12);
+  --glass-edge-3: rgb(var(--fg-rgb) / 0.18);
+  --glass-shadow: 0 18px 44px -14px rgb(12 12 20 / 0.14);
+  --glass-shadow-lg: 0 30px 70px -18px rgb(12 12 20 / 0.18);
+  --glass-shadow-hover: 0 32px 68px -16px rgb(12 12 20 / 0.22);
+  --glass-shadow-pill: 0 6px 16px -4px rgb(12 12 20 / 0.12);
+  --glass-highlight: inset 0 1px 0 0 rgb(255 255 255 / 0.9);
+  --glass-highlight-2: inset 0 1px 0 0 rgb(255 255 255 / 0.95);
+  --glass-highlight-3: inset 0 1px 0 0 rgb(255 255 255 / 1);
+
+  --glow: rgb(255 255 255 / 0.95);
+  --glow-soft: rgb(255 255 255 / 0.65);
+
+  --viz-from: #ffffff;
+  --viz-to: #dcdce3;
+  --viz-glow: rgb(255 255 255 / 0.9);
+  --viz-edge: rgb(var(--fg-rgb) / 0.1);
+
+  --mock-from: #ffffff;
+  --mock-to: #e4e4eb;
+  --mock-phone-from: #ffffff;
+  --mock-phone-to: #e1e1e9;
+
+  --nav-scrolled: rgb(255 255 255 / 0.72);
+
+  --grain-opacity: 0.045;
+  --grain-blend: multiply;
+}
+
+* {
+  border-color: var(--line-hairline);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  background: var(--ground-base);
+}
+
+body {
+  background: var(--ground-base);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition:
+    background-color var(--dur-base) var(--ease-standard),
+    color var(--dur-base) var(--ease-standard);
+}
+
+::selection {
+  background: var(--ink-1);
+  color: var(--ground-base);
+}
+
+/* ---------- focus ---------- */
+:focus-visible {
+  outline: 2px solid var(--ink-1);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 200;
+  background: var(--solid-bg);
+  color: var(--solid-fg);
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: top var(--dur-quick) var(--ease-standard);
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* ============================================================
+   Type ramp
+   ============================================================ */
+.t-display-xxl {
+  font-size: var(--step-display-xxl);
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+}
+.t-display-xl {
+  font-size: var(--step-display-xl);
+  line-height: 1.02;
+  letter-spacing: -0.036em;
+  font-weight: 600;
+}
+.t-display-l {
+  font-size: var(--step-display-l);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+.t-h-xl {
+  font-size: var(--step-h-xl);
+  line-height: 1.12;
+  letter-spacing: -0.026em;
+  font-weight: 600;
+}
+.t-h-l {
+  font-size: var(--step-h-l);
+  line-height: 1.15;
+  letter-spacing: -0.022em;
+  font-weight: 600;
+}
+.t-h-m {
+  font-size: var(--step-h-m);
+  line-height: 1.25;
+  letter-spacing: -0.018em;
+  font-weight: 500;
+}
+.t-h-s {
+  font-size: var(--step-h-s);
+  line-height: 1.33;
+  letter-spacing: -0.012em;
+  font-weight: 500;
+}
+.t-h-xs {
+  font-size: var(--step-h-xs);
+  line-height: 1.4;
+  letter-spacing: -0.008em;
+  font-weight: 500;
+}
+.t-body-l {
+  font-size: var(--step-body-l);
+  line-height: 1.6;
+  letter-spacing: -0.006em;
+}
+.t-body-m {
+  font-size: var(--step-body-m);
+  line-height: 1.65;
+  letter-spacing: -0.003em;
+}
+.t-body-s {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  letter-spacing: -0.001em;
+}
+.t-body-xs {
+  font-size: 0.8125rem;
+  line-height: 1.54;
+}
+.t-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.33;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.t-caption {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.t-index {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.23;
+  letter-spacing: 0.08em;
+}
+.t-stat {
+  font-size: clamp(2.75rem, 5.6vw, 4.75rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+}
+.t-stat-s {
+  font-size: clamp(2.25rem, 3.8vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.032em;
+  font-weight: 600;
+}
+
+.text-secondary {
+  color: var(--ink-2);
+}
+.text-tertiary {
+  color: var(--ink-3);
+}
+.text-quaternary {
+  color: var(--ink-4);
+}
+
+/* ============================================================
+   Glass surfaces
+   ============================================================ */
+.glass {
+  background: var(--glass-01);
+  border: 1px solid var(--glass-edge);
+  backdrop-filter: blur(32px) saturate(120%);
+  -webkit-backdrop-filter: blur(32px) saturate(120%);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+.glass-02 {
+  background: var(--glass-02);
+  border: 1px solid var(--glass-edge-2);
+  backdrop-filter: blur(40px) saturate(120%);
+  -webkit-backdrop-filter: blur(40px) saturate(120%);
+  box-shadow: var(--glass-shadow-lg), var(--glass-highlight-2);
+}
+.glass-03 {
+  background: var(--glass-03);
+  border: 1px solid var(--glass-edge-3);
+  backdrop-filter: blur(40px) saturate(130%);
+  -webkit-backdrop-filter: blur(40px) saturate(130%);
+  box-shadow: var(--glass-shadow-hover), var(--glass-highlight-3);
+}
+.glass-pill {
+  background: var(--glass-03);
+  border: 1px solid var(--glass-edge-3);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  box-shadow: var(--glass-shadow-pill), var(--glass-highlight-2);
+}
+
+/* film grain — sits above everything, ignores pointer events */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.hairline {
+  height: 1px;
+  width: 100%;
+  background: var(--line-hairline);
+}
+
+/* ============================================================
+   Scroll reveal
+   ============================================================ */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 32px, 0);
+  filter: blur(8px);
+  transition:
+    opacity var(--dur-reveal) var(--ease-entrance),
+    transform var(--dur-reveal) var(--ease-entrance),
+    filter var(--dur-reveal) var(--ease-entrance);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.js [data-reveal].is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: blur(0);
+}
+
+/* line-mask reveal for display headings */
+.line-mask > span {
+  display: block;
+  overflow: hidden;
+}
+.js .line-mask > span > span {
+  display: block;
+  transform: translate3d(0, 110%, 0);
+  transition: transform 900ms var(--ease-entrance);
+  transition-delay: var(--line-delay, 0ms);
+}
+.js .line-mask.is-visible > span > span {
+  transform: translate3d(0, 0, 0);
+}
+
+/* ambient drift for hero glass panels */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+.drift {
+  animation: drift 9s var(--ease-standard) infinite;
+}
+
+@keyframes sweep {
+  0% {
+    background-position: -140% 0;
+  }
+  100% {
+    background-position: 240% 0;
+  }
+}
+.sweep {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--fg-rgb) / 0.06) 30%,
+    rgb(var(--fg-rgb) / 0.75) 50%,
+    rgb(var(--fg-rgb) / 0.06) 70%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: sweep 5.5s linear infinite;
+}
+
+/* horizontal showcase */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.footer-link {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  transition: color var(--dur-quick) var(--ease-standard);
+  width: fit-content;
+}
+.footer-link:hover {
+  color: var(--ink-1);
+}
+
+/* line-draw for the process rail */
+.js [data-draw] {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 1400ms var(--ease-standard);
+}
+.js [data-draw].is-visible {
+  transform: scaleX(1);
+}
+
+/* sequential node pop along the rail */
+.js [data-pop] {
+  transform: scale(0.2);
+  opacity: 0;
+  transition:
+    transform 520ms var(--ease-standard),
+    opacity 320ms linear;
+  transition-delay: var(--pop-delay, 0ms);
+}
+.js [data-pop].is-visible {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ============================================================
+   Reduced motion — the site is complete with all motion removed
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .js [data-reveal] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: opacity 150ms linear;
+  }
+  .js .line-mask > span > span {
+    transform: none;
+  }
+  .drift,
+  .sweep {
+    animation: none;
+  }
+  .sweep {
+    background: var(--line-subtle);
+  }
+  .js [data-draw] {
+    transform: scaleX(1);
+  }
+  .js [data-pop] {
+    transform: none;
+    opacity: 1;
+  }
+}

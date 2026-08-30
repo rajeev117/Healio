@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+@theme {
+  /* Healio brand */
+  --color-primary: #821c03;
+  --color-primary-hover: #6b1702;
+  --color-primary-soft: #fdf2f0;
+  --color-primary-foreground: #ffffff;
+
+  /* Semantic */
+  --color-success: #16a34a;
+  --color-success-soft: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-soft: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fee2e2;
+  --color-info: #2563eb;
+  --color-info-soft: #dbeafe;
+
+  /* Sidebar */
+  --color-sidebar: #0f1117;
+  --color-sidebar-hover: #1a1d27;
+  --color-sidebar-active: #1f2333;
+  --color-sidebar-border: #1e2130;
+  --color-sidebar-text: #94a3b8;
+  --color-sidebar-text-active: #f1f5f9;
+  --color-sidebar-badge: #821c03;
+
+  /* Surface */
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-surface-3: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Text */
+  --color-text: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+
+  /* Topbar */
+  --color-topbar: #ffffff;
+  --color-topbar-border: #e2e8f0;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-surface-2);
+  color: var(--color-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* Sidebar scrollbar invisible */
+.sidebar-scroll::-webkit-scrollbar { width: 0; }
+
+/* ── Keyframes ─────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Animation utility classes ─────────────────────────── */
+.animate-fade-in       { animation: fadeIn       0.25s ease both; }
+.animate-slide-up      { animation: slideUp      0.3s  ease both; }
+.animate-slide-in-right{ animation: slideInRight 0.3s  ease both; }
+.animate-scale-in      { animation: scaleIn      0.25s ease both; }
+
+/* Staggered children — add to a parent, children get delay */
+.stagger-children > * { animation: slideUp 0.3s ease both; }
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(n+7) { animation-delay: 360ms; }
+
+/* Page-level entrance — applied to the <main> wrapper on each route */
+.page-enter { animation: scaleIn 0.2s ease both; }
+
+/* Shimmer skeleton loader */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface-3) 25%, var(--color-border) 50%, var(--color-surface-3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* Sidebar collapse transition */
+.sidebar-transition { transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Generic interactive transitions */
+.btn-transition {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+.btn-transition:hover  { transform: translateY(-1px); }
+.btn-transition:active { transform: translateY(0) scale(0.98); }

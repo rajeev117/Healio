@@ -1,0 +1,86 @@
+import { StyleSheet } from 'react-native';
+import { COLORS, SPACING, SIZES } from '../constants/theme';
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: SPACING.m, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, alignItems: 'center',
+    justifyContent: 'center', backgroundColor: COLORS.white,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text },
+  recordsBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primarySoft, borderWidth: 1, borderColor: COLORS.border },
+  patientCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    margin: SPACING.m, padding: SPACING.m,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusLg,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  patientAvatar: {
+    width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  patientInitials: { color: COLORS.white, fontWeight: '800', fontSize: 16 },
+  patientInfo: { flex: 1 },
+  patientName: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  patientMeta: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  addVisitBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.primary, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  addVisitText: { color: COLORS.white, fontWeight: '700', fontSize: 12 },
+  sectionHeader: { paddingHorizontal: SPACING.m, paddingBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  vitalsScroll: { paddingHorizontal: SPACING.m, paddingBottom: 16, gap: 12 },
+  vitalCard: {
+    width: 110, padding: 14, borderRadius: 16,
+    borderWidth: 1, borderColor: COLORS.border, gap: 6,
+  },
+  vitalValue: { fontSize: 20, fontWeight: '800', color: COLORS.text },
+  vitalUnit: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
+  vitalLabel: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '600' },
+  filterScroll: { paddingHorizontal: SPACING.m, paddingBottom: 14, gap: 10 },
+  filterChip: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border,
+  },
+  filterChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  filterText: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
+  filterTextActive: { color: COLORS.white },
+  timeline: { paddingHorizontal: SPACING.m, paddingBottom: SPACING.m },
+  timelineItem: { flexDirection: 'row', gap: 12 },
+  timelineLeft: { alignItems: 'center', width: 36 },
+  timelineIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  timelineLine: { flex: 1, width: 2, backgroundColor: COLORS.border, marginVertical: 2 },
+  timelineContent: {
+    flex: 1, backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusLg, borderWidth: 1, borderColor: COLORS.border,
+    padding: SPACING.m, marginBottom: 12,
+  },
+  timelineContentHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  timelineContentLeft: { flex: 1 },
+  timelineTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
+  timelineDoctor: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  timelineDate: { fontSize: 11, color: COLORS.textSecondary, marginTop: 3, fontWeight: '600' },
+  timelineExpanded: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border, gap: 8 },
+  diagnosisRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  diagLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
+  diagValue: { fontSize: 12, fontWeight: '700', color: COLORS.text, flex: 1 },
+  expandedNotes: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
+  expandedSection: { gap: 4 },
+  expandedSectionTitle: { fontSize: 12, fontWeight: '800', color: COLORS.text },
+  expandedChipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  expandedChipText: { fontSize: 12, color: COLORS.text, fontWeight: '600' },
+});
+
+export default styles;
