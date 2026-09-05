@@ -7,8 +7,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabaseAdmin } from './supabase-admin';
 import { rolePermissions } from './roles';
+// 'use server' means every export in THIS file must be an async function, so
+// the shared constants live in a plain module both sides can import.
+import {
+  FEATURE_AUDIENCES, INDIVIDUAL_KINDS, ORG_TYPE_TO_KIND, PUSH_AUDIENCES,
+} from './platform-meta';
+import type { FeatureAudience, IndividualKind } from './platform-meta';
 import type {
   Organisation, Patient, Provider, Rmp, SubAdmin, Appointment, Order, Transaction, AuditLog,
+  StaffRole,
 } from '@/types';
 
 // ── Transforms ────────────────────────────────────────────────────────────────
@@ -67,11 +74,23 @@ function toProvider(r: any): Provider {
     id: r.id,
     name: r.name,
     type: roleToType[r.role] ?? 'doctor',
+    // The real staff_role, so the UI can show and filter on what someone
+    // actually is rather than squeezing seven roles into four buckets.
+    role: r.role,
+    staffId: r.staff_id ?? undefined,
     specialty: r.specialty ?? undefined,
     phone: r.phone ?? undefined,
+    email: r.email ?? undefined,
     department: r.department ?? undefined,
+    shift: r.shift ?? undefined,
+    photoUrl: r.photo_url ?? undefined,
     orgId: r.organisation_id ?? '',
     orgName: r.organisations?.name ?? '—',
+    orgType: r.organisations?.type ?? undefined,
+    orgStatus: r.organisations?.status ?? undefined,
+    // Whether this person has ever logged in — a staff row is created by the
+    // hospital admin and only linked to an auth user on first login.
+    linked: !!r.user_id,
     status,
     verifiedAt: r.verified_at ?? undefined,
     rating: Number(r.rating ?? 0),
@@ -150,22 +169,153 @@ export async function createOrg(input: {
   name: string; type: string; city: string; country: string; subscription: string; phone?: string;
 }): Promise<Organisation> {
   const { phone, ...rest } = input;
+  // Active, not pending. 'pending' means "an application nobody has reviewed
+  // yet", and it belongs to the onboarding queue. An admin creating an
+  // organisation by hand IS the review — leaving it pending meant the org
+  // silently could not log in (resolveRole blocks pending orgs, migration-061)
+  // with nothing in the UI explaining why.
   const { data, error } = await supabaseAdmin
     .from('organisations')
-    .insert({ ...rest, admin_phone: phone || null, status: 'pending' })
+    .insert({ ...rest, admin_phone: phone || null, status: 'active' })
     .select().single();
   if (error) throw new Error(error.message);
   return toOrg(data);
 }
 
-export async function setOrgStatus(id: string, status: 'active' | 'suspended'): Promise<void> {
-  const { error } = await supabaseAdmin.from('organisations').update({ status }).eq('id', id);
+// Suspending an organisation has to take its staff down with it, or a
+// suspended hospital's doctors keep working through their own logins.
+//
+// Reactivating must NOT simply set every staff row back to 'active': that would
+// silently resurrect people an admin had deactivated individually. staff
+// .suspended_at (migration-061) marks the ones this cascade switched off, so
+// only those come back.
+async function cascadeStaffStatus(orgId: string, suspend: boolean): Promise<void> {
+  try {
+    if (suspend) {
+      const { error } = await supabaseAdmin.from('staff')
+        .update({ status: 'inactive', suspended_at: new Date().toISOString() })
+        .eq('organisation_id', orgId)
+        .eq('status', 'active');
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseAdmin.from('staff')
+        .update({ status: 'active', suspended_at: null, suspended_reason: null })
+        .eq('organisation_id', orgId)
+        .not('suspended_at', 'is', null);
+      if (error) throw error;
+    }
+  } catch (_) {
+    // migration-061 not applied. Fall back to the blunt version for a suspend
+    // (locking people out is the safe direction) and do nothing on reactivate,
+    // rather than guessing which staff should come back.
+    if (suspend) {
+      await supabaseAdmin.from('staff')
+        .update({ status: 'inactive' })
+        .eq('organisation_id', orgId)
+        .eq('status', 'active');
+    }
+  }
+}
+
+export async function setOrgStatus(
+  id: string,
+  status: 'active' | 'suspended',
+  reason?: string,
+): Promise<void> {
+  // Stamp when and why, so the org detail page can explain a suspension
+  // instead of just showing a red badge. Falls back to the bare status write
+  // if migration-061 hasn't been applied.
+  const patch: Record<string, unknown> = {
+    status,
+    suspended_at: status === 'suspended' ? new Date().toISOString() : null,
+    suspended_reason: status === 'suspended' ? (reason || null) : null,
+  };
+  let { error } = await supabaseAdmin.from('organisations').update(patch).eq('id', id);
+  if (error && (error.code === '42703' || /suspended_at|suspended_reason/i.test(error.message || ''))) {
+    ({ error } = await supabaseAdmin.from('organisations').update({ status }).eq('id', id));
+  }
   if (error) throw new Error(error.message);
+
+  await cascadeStaffStatus(id, status === 'suspended');
 }
 
 export async function deleteOrg(id: string): Promise<void> {
   const { error } = await supabaseAdmin.from('organisations').delete().eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+// Everything the organisation detail page needs, scoped to ONE organisation.
+//
+// That page used to call listOrgs + listProviders + listPatients +
+// listAppointments + listOrders + listTransactions and filter the results in
+// the browser — six full table reads to render a single record, and three of
+// them matched on organisation NAME rather than id, so two orgs sharing a name
+// would have shown each other's data. Cost grew with the size of the platform
+// rather than the size of the org.
+//
+// One call, six scoped queries, filtered by organisation_id in Postgres.
+export async function getOrgDetail(orgId: string): Promise<{
+  org: Organisation | null;
+  providers: Provider[];
+  patients: Patient[];
+  appointments: Appointment[];
+  orders: Order[];
+  transactions: Transaction[];
+}> {
+  const { data: orgRow, error: orgErr } = await supabaseAdmin
+    .from('organisations').select('*').eq('id', orgId).maybeSingle();
+  if (orgErr) throw new Error(orgErr.message);
+  if (!orgRow) {
+    return { org: null, providers: [], patients: [], appointments: [], orders: [], transactions: [] };
+  }
+
+  const [staffRes, patientsRes, apptRes, txnRes, phRes, labRes, hcRes] = await Promise.all([
+    supabaseAdmin.from('staff')
+      .select('*, organisations(name)')
+      .eq('organisation_id', orgId)
+      .in('role', ['doctor', 'lab_technician', 'pharmacy_assistant'])
+      .order('created_at', { ascending: false }),
+    supabaseAdmin.from('profiles')
+      .select('*, organisations(name), wallets(balance), appointments(count)')
+      .eq('organisation_id', orgId)
+      .order('created_at', { ascending: false }),
+    supabaseAdmin.from('appointments')
+      .select('*, profiles!patient_id(name), staff!doctor_staff_id(name), organisations!organisation_id(name)')
+      .eq('organisation_id', orgId)
+      .order('scheduled_at', { ascending: false }),
+    supabaseAdmin.from('transactions')
+      .select('*, profiles(name), organisations(name)')
+      .eq('organisation_id', orgId)
+      .order('created_at', { ascending: false }),
+    supabaseAdmin.from('pharmacy_orders').select('*, profiles(name), organisations(name)').eq('organisation_id', orgId),
+    supabaseAdmin.from('lab_orders').select('*, profiles(name), organisations(name)').eq('organisation_id', orgId),
+    supabaseAdmin.from('homecare_orders').select('*, profiles(name), organisations(name)').eq('organisation_id', orgId),
+  ]);
+
+  const mapOrders = (rows: any[] | null, type: Order['type']): Order[] =>
+    (rows ?? []).map((r) => ({
+      id: r.id,
+      orderId: r.order_id,
+      patientName: r.profiles?.name ?? '—',
+      orgName: r.organisations?.name ?? '—',
+      type,
+      status: r.status,
+      total: Number(r.total ?? 0),
+      createdAt: r.created_at,
+    }));
+
+  return {
+    org: toOrg(orgRow),
+    providers: (staffRes.data ?? []).map(toProvider),
+    patients: (patientsRes.data ?? []).map(toPatient),
+    appointments: (apptRes.data ?? []).map(toAppointment),
+    orders: [
+      ...mapOrders(phRes.data, 'pharmacy'),
+      ...mapOrders(labRes.data, 'lab'),
+      ...mapOrders(hcRes.data, 'homecare'),
+    ].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)),
+    transactions: (txnRes.data ?? []).map(toTransaction),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -243,16 +393,124 @@ export async function setStaffStatus(id: string, status: 'active' | 'inactive'):
 // ONBOARDING QUEUE
 // ═══════════════════════════════════════════════════════════════════════════
 
+// A KYC document as the admin panel can actually use it.
+//   label  human name for the slot ('Registration Certificate')
+//   path   object path inside the private verification-docs bucket
+//   url    short-lived signed URL, or null when the file is missing
+export type VerificationDoc = {
+  label: string;
+  path: string | null;
+  url: string | null;
+};
+
+// The signup wizard stores `documents` as raw slot keys ('registration',
+// 'license', 'id') and the matching storage paths in `document_urls`.
+const DOC_LABELS: Record<string, string> = {
+  registration: 'Registration Certificate',
+  license: 'Trade / Drug License',
+  id: 'Owner ID Proof',
+};
+const docLabel = (key: string) =>
+  DOC_LABELS[key] ??
+  key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+// verification-docs is a PRIVATE bucket (migration-019): only the service role
+// can read it, so the browser cannot load these paths directly. Signed URLs are
+// how the admin panel shows them — one hour is long enough to review an
+// application and short enough that a leaked link expires.
+const SIGNED_URL_TTL = 60 * 60;
+
+async function signDocs(paths: string[], labels: string[]): Promise<VerificationDoc[]> {
+  const out: VerificationDoc[] = labels.map((label, i) => ({
+    label,
+    path: paths[i] ?? null,
+    url: null,
+  }));
+
+  const withPaths = out.filter((d) => d.path);
+  if (withPaths.length === 0) return out;
+
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from('verification-docs')
+      .createSignedUrls(withPaths.map((d) => d.path as string), SIGNED_URL_TTL);
+    if (error) throw error;
+    (data ?? []).forEach((row: any, i: number) => {
+      if (row?.signedUrl) withPaths[i].url = row.signedUrl;
+    });
+  } catch (_) {
+    // Bucket missing or storage unreachable — the caller still gets the slot
+    // list, and the UI says "file unavailable" rather than lying with a tick.
+  }
+  return out;
+}
+
 export async function listOnboarding() {
   const { data, error } = await supabaseAdmin
     .from('onboarding_queue').select('*').order('applied_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r: any) => ({
+
+  const rows = data ?? [];
+  // Sign up front so opening the drawer is instant rather than firing a storage
+  // round trip per click — but only for applications still awaiting review,
+  // since those are the only ones the queue lets you open. Signing the whole
+  // history would cost one storage call per row for nothing.
+  const docs = await Promise.all(
+    rows.map((r: any) => {
+      if (r.status !== 'pending') return Promise.resolve([] as VerificationDoc[]);
+      const keys: string[] = r.documents ?? [];
+      const paths: string[] = r.document_urls ?? [];
+      return signDocs(paths, keys.map(docLabel));
+    }),
+  );
+
+  return rows.map((r: any, i: number) => ({
     id: r.id, name: r.name, type: r.type, city: r.city, country: r.country,
     appliedAt: r.applied_at, contactName: r.contact_name, contactEmail: r.admin_email,
     contactPhone: r.admin_phone, documents: r.documents ?? [], notes: r.notes ?? '',
     status: r.status,
+    address: r.address ?? null,
+    latitude: r.latitude ?? null,
+    longitude: r.longitude ?? null,
+    docs: docs[i],
   }));
+}
+
+// Verification documents for an already-approved organisation.
+// approveOnboarding() copies the applicant's paths onto the org, so this works
+// for anything onboarded after that change; older orgs fall back to their
+// original application row.
+export async function getOrgDocuments(orgId: string): Promise<VerificationDoc[]> {
+  const { data: org } = await supabaseAdmin
+    .from('organisations')
+    .select('verification_doc_urls')
+    .eq('id', orgId)
+    .maybeSingle();
+
+  let paths: string[] = org?.verification_doc_urls ?? [];
+  let keys: string[] = [];
+
+  const { data: apps } = await supabaseAdmin
+    .from('onboarding_queue')
+    .select('documents, document_urls')
+    .eq('organisation_id', orgId)
+    .order('applied_at', { ascending: false })
+    .limit(1);
+  const app = apps?.[0];
+
+  if (app) {
+    keys = app.documents ?? [];
+    // Orgs approved before the copy-on-approve change have an empty
+    // verification_doc_urls; their files are still on the application row.
+    if (paths.length === 0) paths = app.document_urls ?? [];
+  }
+
+  if (paths.length === 0 && keys.length === 0) return [];
+  // Label by slot key when we have them, else number the files.
+  const labels = keys.length
+    ? keys.map(docLabel)
+    : paths.map((_, i) => `Document ${i + 1}`);
+  return signDocs(paths, labels);
 }
 
 export async function approveOnboarding(id: string): Promise<void> {
@@ -261,15 +519,30 @@ export async function approveOnboarding(id: string): Promise<void> {
     .from('onboarding_queue').select('*').eq('id', id).single();
   if (e1) throw new Error(e1.message);
 
-  // Create the organisation (active)
-  const { data: org, error: e2 } = await supabaseAdmin
-    .from('organisations')
-    .insert({
-      name: app.name, type: app.type, city: app.city, country: app.country,
-      address: app.address, admin_phone: app.admin_phone, admin_email: app.admin_email,
-      beds: app.beds, departments: app.departments, status: 'active',
-    })
-    .select().single();
+  // Create the organisation (active).
+  // verification_doc_urls and the coordinates are carried over from the
+  // application: without the copy the KYC files stayed orphaned on the queue
+  // row and the org detail page had nothing to show, and without the
+  // coordinates an approved provider never appears in "nearest" results.
+  const insert: Record<string, unknown> = {
+    name: app.name, type: app.type, city: app.city, country: app.country,
+    address: app.address, admin_phone: app.admin_phone, admin_email: app.admin_email,
+    beds: app.beds, departments: app.departments, status: 'active',
+    verification_doc_urls: app.document_urls ?? [],
+  };
+  if (app.latitude != null)  insert.latitude  = app.latitude;
+  if (app.longitude != null) insert.longitude = app.longitude;
+
+  let { data: org, error: e2 } = await supabaseAdmin
+    .from('organisations').insert(insert).select().single();
+
+  // migration-019 / 014 not applied on this project yet: approving the
+  // application still matters more than carrying the extra columns.
+  if (e2 && (e2.code === '42703' || /verification_doc_urls|latitude|longitude/i.test(e2.message || ''))) {
+    const { verification_doc_urls, latitude, longitude, ...core } = insert as any;
+    ({ data: org, error: e2 } = await supabaseAdmin
+      .from('organisations').insert(core).select().single());
+  }
   if (e2) throw new Error(e2.message);
 
   // Mark application approved + link org
@@ -334,14 +607,159 @@ export async function adjustPatientWallet(
 // PROVIDERS  (= staff with medical roles)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Every staff member, not just the clinical three.
+//
+// This used to filter to doctor / lab_technician / pharmacy_assistant, so a
+// hospital's OPD assistants, nurses, receptionists and org admins existed in
+// the database but appeared NOWHERE in the admin panel outside a single org's
+// Staff tab. The page called itself "Providers" and quietly showed a subset.
+// The role filter now belongs to the UI, where it is visible and adjustable.
 export async function listProviders(): Promise<Provider[]> {
   const { data, error } = await supabaseAdmin
     .from('staff')
-    .select('*, organisations(name)')
-    .in('role', ['doctor', 'lab_technician', 'pharmacy_assistant'])
+    .select('*, organisations(name, type, status)')
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map(toProvider);
+}
+
+// Staff, one page at a time, filtered in Postgres.
+//
+// listProviders() returns every staff row on the platform. That is fine for a
+// handful of hospitals and hopeless at a thousand: the browser would download
+// every doctor, nurse and receptionist in the country to render twenty rows,
+// and the search box only ever filtered what had already been shipped.
+//
+// Filtering, searching, counting and paging all happen server-side here.
+export type StaffQuery = {
+  page?: number;
+  pageSize?: number;
+  role?: StaffRole | 'all';
+  status?: 'all' | 'active' | 'pending_verification' | 'suspended';
+  orgId?: string;
+  search?: string;
+};
+
+export type StaffPage = {
+  rows: Provider[];
+  total: number;
+  page: number;
+  pageSize: number;
+  countsByRole: Record<string, number>;
+};
+
+// `Provider.status` is derived, not a column: unverified beats everything, then
+// staff.status. Translating it back into query terms keeps the filter honest.
+function applyStatus(q: any, status: StaffQuery['status']) {
+  if (status === 'pending_verification') return q.is('verified_at', null);
+  if (status === 'suspended') return q.not('verified_at', 'is', null).eq('status', 'inactive');
+  if (status === 'active') return q.not('verified_at', 'is', null).neq('status', 'inactive');
+  return q;
+}
+
+// Escape the PostgREST `or=` separators so a comma or paren in a search box
+// can't rewrite the filter expression.
+const safeSearch = (v: string) => v.replace(/[,()\\]/g, ' ').trim();
+
+export async function listStaffPage(params: StaffQuery = {}): Promise<StaffPage> {
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.min(100, Math.max(5, params.pageSize ?? 25));
+  const from = (page - 1) * pageSize;
+  const search = safeSearch(params.search ?? '');
+
+  const base = () => {
+    let q: any = supabaseAdmin.from('staff');
+    return q;
+  };
+
+  const withFilters = (q: any) => {
+    if (params.role && params.role !== 'all') q = q.eq('role', params.role);
+    if (params.orgId) q = q.eq('organisation_id', params.orgId);
+    if (search) {
+      q = q.or(
+        `name.ilike.%${search}%,phone.ilike.%${search}%,` +
+        `staff_id.ilike.%${search}%,specialty.ilike.%${search}%`,
+      );
+    }
+    return applyStatus(q, params.status ?? 'all');
+  };
+
+  const rowsQuery = withFilters(
+    base().select('*, organisations(name, type, status)', { count: 'exact' }),
+  ).order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+
+  // Tab counts ignore the role filter (a tab must show its own size even while
+  // another tab is selected) but honour every other filter.
+  const roles: StaffRole[] = [
+    'doctor', 'lab_technician', 'pharmacy_assistant',
+    'nurse', 'opd_assistant', 'receptionist', 'admin',
+  ];
+  const countFor = (role: StaffRole | null) => {
+    let q: any = supabaseAdmin.from('staff').select('id', { count: 'exact', head: true });
+    if (role) q = q.eq('role', role);
+    if (params.orgId) q = q.eq('organisation_id', params.orgId);
+    if (search) {
+      q = q.or(
+        `name.ilike.%${search}%,phone.ilike.%${search}%,` +
+        `staff_id.ilike.%${search}%,specialty.ilike.%${search}%`,
+      );
+    }
+    return applyStatus(q, params.status ?? 'all');
+  };
+
+  const [res, allCount, ...roleCounts] = await Promise.all([
+    rowsQuery,
+    countFor(null),
+    ...roles.map((r) => countFor(r)),
+  ]);
+
+  if (res.error) throw new Error(res.error.message);
+
+  const countsByRole: Record<string, number> = { all: allCount.count ?? 0 };
+  roles.forEach((r, i) => { countsByRole[r] = roleCounts[i].count ?? 0; });
+
+  return {
+    rows: (res.data ?? []).map(toProvider),
+    total: res.count ?? 0,
+    page,
+    pageSize,
+    countsByRole,
+  };
+}
+
+// Organisations for the staff page's filter, searched server-side.
+// listOrgNames() caps at 50 active orgs, which is a filter that silently omits
+// most of the platform once there are more than that.
+export async function searchOrgNames(
+  query = '',
+  limit = 30,
+): Promise<{ id: string; name: string; type: string; staffCount: number }[]> {
+  let q: any = supabaseAdmin
+    .from('organisations')
+    .select('id, name, type')
+    .order('name')
+    .limit(Math.min(100, limit));
+  const search = safeSearch(query);
+  if (search) q = q.ilike('name', `%${search}%`);
+
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+
+  const orgs = data ?? [];
+  if (orgs.length === 0) return [];
+
+  // One grouped count rather than a query per organisation.
+  const ids = orgs.map((o: any) => o.id);
+  const { data: staff } = await supabaseAdmin
+    .from('staff').select('organisation_id').in('organisation_id', ids);
+  const counts: Record<string, number> = {};
+  (staff ?? []).forEach((r: any) => {
+    counts[r.organisation_id] = (counts[r.organisation_id] ?? 0) + 1;
+  });
+
+  return orgs.map((o: any) => ({
+    id: o.id, name: o.name, type: o.type, staffCount: counts[o.id] ?? 0,
+  }));
 }
 
 export async function verifyProvider(id: string): Promise<void> {
@@ -354,6 +772,195 @@ export async function suspendProvider(id: string): Promise<void> {
   const { error } = await supabaseAdmin.from('staff')
     .update({ status: 'inactive' }).eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INDIVIDUAL / STANDALONE PROVIDERS
+//
+// A solo doctor, standalone lab and standalone pharmacy each sign up through
+// the same wizard a hospital uses, so on approval they are an `organisations`
+// row — type 'clinic', 'diagnostic' and 'pharmacy' respectively. resolveRole()
+// in the mobile app maps those three org types onto the independent_* roles.
+//
+// They were therefore already IN the admin panel, buried among hospitals in
+// the Organisations grid with no way to tell one apart. This gives them their
+// own registry, and an off switch that the app now actually honours: until
+// migration-061 the panel wrote organisations.status = 'suspended' and
+// resolveRole() never read it back, so "suspend" changed nothing.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type IndividualProvider = {
+  id: string;
+  kind: IndividualKind;
+  kindLabel: string;
+  name: string;
+  city: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  status: 'active' | 'suspended' | 'trial' | 'pending';
+  linked: boolean;          // has an auth account claimed this org yet
+  staffCount: number;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  joinedAt: string;
+};
+
+export async function listIndividualProviders(): Promise<IndividualProvider[]> {
+  const { data, error } = await supabaseAdmin
+    .from('organisations')
+    .select('*')
+    .in('type', Object.keys(ORG_TYPE_TO_KIND))
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  // One query for every org's staff instead of N — an individual doctor is a
+  // one-person org, but a standalone lab can employ technicians.
+  const ids = rows.map((r: any) => r.id);
+  const { data: staff } = await supabaseAdmin
+    .from('staff').select('organisation_id').in('organisation_id', ids);
+  const staffCounts: Record<string, number> = {};
+  (staff ?? []).forEach((r: any) => {
+    staffCounts[r.organisation_id] = (staffCounts[r.organisation_id] ?? 0) + 1;
+  });
+
+  return rows.map((r: any) => ({
+    id: r.id,
+    kind: ORG_TYPE_TO_KIND[r.type],
+    kindLabel: INDIVIDUAL_KINDS[ORG_TYPE_TO_KIND[r.type]].label,
+    name: r.name,
+    city: r.city ?? '',
+    address: r.address ?? null,
+    phone: r.admin_phone ?? null,
+    email: r.admin_email ?? null,
+    status: r.status,
+    linked: !!r.admin_user_id,
+    staffCount: staffCounts[r.id] ?? 0,
+    suspendedAt: r.suspended_at ?? null,
+    suspendedReason: r.suspended_reason ?? null,
+    joinedAt: r.joined_at ?? r.created_at,
+  }));
+}
+
+// Everything known about one independent provider, for the detail panel.
+//
+// The list view can only afford summary columns; this fills in the rest —
+// address and coordinates, verification documents, the staff they employ, and
+// how much work has actually come through them.
+export type IndividualProviderDetail = {
+  provider: IndividualProvider | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  subscription: string | null;
+  docs: VerificationDoc[];
+  staff: { id: string; name: string; role: string; phone: string; status: string }[];
+  counts: { appointments: number; orders: number; patients: number };
+};
+
+export async function getIndividualProviderDetail(
+  orgId: string,
+): Promise<IndividualProviderDetail> {
+  const { data: org } = await supabaseAdmin
+    .from('organisations').select('*').eq('id', orgId).maybeSingle();
+
+  if (!org) {
+    return {
+      provider: null, address: null, latitude: null, longitude: null,
+      subscription: null, docs: [], staff: [],
+      counts: { appointments: 0, orders: 0, patients: 0 },
+    };
+  }
+
+  const kind = ORG_TYPE_TO_KIND[org.type] ?? 'individual_doctor';
+
+  const [docs, staffRes, apptRes, phRes, labRes, patRes] = await Promise.all([
+    getOrgDocuments(orgId),
+    supabaseAdmin.from('staff')
+      .select('id, name, role, phone, status')
+      .eq('organisation_id', orgId)
+      .order('created_at', { ascending: false }),
+    supabaseAdmin.from('appointments')
+      .select('id', { count: 'exact', head: true }).eq('organisation_id', orgId),
+    supabaseAdmin.from('pharmacy_orders')
+      .select('id', { count: 'exact', head: true }).eq('organisation_id', orgId),
+    supabaseAdmin.from('lab_orders')
+      .select('id', { count: 'exact', head: true }).eq('organisation_id', orgId),
+    supabaseAdmin.from('profiles')
+      .select('id', { count: 'exact', head: true }).eq('organisation_id', orgId),
+  ]);
+
+  return {
+    provider: {
+      id: org.id,
+      kind,
+      kindLabel: INDIVIDUAL_KINDS[kind].label,
+      name: org.name,
+      city: org.city ?? '',
+      address: org.address ?? null,
+      phone: org.admin_phone ?? null,
+      email: org.admin_email ?? null,
+      status: org.status,
+      linked: !!org.admin_user_id,
+      staffCount: (staffRes.data ?? []).length,
+      suspendedAt: org.suspended_at ?? null,
+      suspendedReason: org.suspended_reason ?? null,
+      joinedAt: org.joined_at ?? org.created_at,
+    },
+    address: org.address ?? null,
+    latitude: org.latitude ?? null,
+    longitude: org.longitude ?? null,
+    subscription: org.subscription ?? null,
+    docs,
+    staff: (staffRes.data ?? []).map((r: any) => ({
+      id: r.id, name: r.name, role: r.role, phone: r.phone ?? '', status: r.status,
+    })),
+    counts: {
+      appointments: apptRes.count ?? 0,
+      orders: (phRes.count ?? 0) + (labRes.count ?? 0),
+      patients: patRes.count ?? 0,
+    },
+  };
+}
+
+// The off switch. Writing status is what the mobile app's login gate reads;
+// the timestamp and reason are for the audit trail and the admin UI.
+export async function setIndividualProviderStatus(
+  id: string,
+  enabled: boolean,
+  reason?: string,
+): Promise<void> {
+  const patch: Record<string, unknown> = {
+    status: enabled ? 'active' : 'suspended',
+    suspended_at: enabled ? null : new Date().toISOString(),
+    suspended_reason: enabled ? null : (reason || null),
+  };
+
+  let { data, error } = await supabaseAdmin
+    .from('organisations').update(patch).eq('id', id).select('name, type').single();
+
+  // migration-061 not applied — the status write is the part that matters.
+  if (error && (error.code === '42703' || /suspended_at|suspended_reason/i.test(error.message || ''))) {
+    ({ data, error } = await supabaseAdmin
+      .from('organisations')
+      .update({ status: patch.status })
+      .eq('id', id).select('name, type').single());
+  }
+  if (error) throw new Error(error.message);
+
+  // Cascade to the provider's own staff so a suspended lab's technicians
+  // can't keep logging in through their individual staff accounts.
+  await cascadeStaffStatus(id, !enabled);
+
+  const kind = ORG_TYPE_TO_KIND[(data as any)?.type] ?? 'individual_doctor';
+  await writeAuditLog(
+    `${enabled ? 'Enabled' : 'Disabled'} ${INDIVIDUAL_KINDS[kind].label.toLowerCase()}`,
+    'Individual Providers',
+    `${(data as any)?.name ?? id}${reason ? ` — ${reason}` : ''}`,
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -819,16 +1426,147 @@ export async function listPushNotifications() {
   return (data ?? []).map((r: any) => ({
     id: r.id, title: r.title, body: r.body, audience: r.audience,
     sentAt: r.sent_at, delivered: r.delivered ?? 0, opened: r.opened ?? 0,
+    failed: r.failed ?? 0, sendError: r.send_error ?? null,
   }));
 }
 
-export async function sendPushNotification(input: { title: string; body: string; audience: string }) {
+// Expo's push service. Batches of at most 100 messages per request.
+const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
+const EXPO_BATCH_SIZE = 100;
+
+// An unrecognised audience resolves to NO recipients, never to "everyone".
+// Getting this wrong sends a targeted message to the whole user base.
+function rolesForAudience(audience: string): string[] | null {
+  if (!(audience in PUSH_AUDIENCES)) return [];
+  const roles = PUSH_AUDIENCES[audience];
+  return roles === null ? null : [...roles];
+}
+
+type ExpoTicket = { status: string; message?: string; details?: { error?: string } };
+
+// Push the message to Expo and report what actually happened. Never throws:
+// the broadcast row is already saved, and a delivery failure must not lose it.
+async function deliverViaExpo(
+  tokens: { token: string }[],
+  message: { title: string; body: string; data?: Record<string, unknown> },
+): Promise<{ delivered: number; failed: number; dead: string[]; error: string | null }> {
+  let delivered = 0;
+  let failed = 0;
+  const dead: string[] = [];
+
+  for (let i = 0; i < tokens.length; i += EXPO_BATCH_SIZE) {
+    const batch = tokens.slice(i, i + EXPO_BATCH_SIZE);
+    try {
+      const res = await fetch(EXPO_PUSH_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'accept-encoding': 'gzip, deflate',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(batch.map((t) => ({
+          to: t.token,
+          title: message.title,
+          body: message.body,
+          sound: 'default',
+          data: message.data ?? {},
+        }))),
+      });
+      const json = await res.json();
+      const tickets: ExpoTicket[] = json?.data ?? [];
+      tickets.forEach((ticket, idx) => {
+        if (ticket?.status === 'ok') { delivered += 1; return; }
+        failed += 1;
+        // The app was uninstalled or the token rotated. Expo asks that we stop
+        // sending to it, so retire the row rather than failing forever.
+        if (ticket?.details?.error === 'DeviceNotRegistered') {
+          dead.push(batch[idx].token);
+        }
+      });
+      // A malformed request returns `errors` and no per-message tickets.
+      if (!json?.data && json?.errors) {
+        failed += batch.length;
+        return { delivered, failed, dead, error: JSON.stringify(json.errors).slice(0, 500) };
+      }
+    } catch (e: any) {
+      failed += batch.length;
+      return { delivered, failed, dead, error: e?.message ?? 'Expo push request failed' };
+    }
+  }
+  return { delivered, failed, dead, error: null };
+}
+
+export async function sendPushNotification(input: {
+  title: string; body: string; audience: string;
+}) {
+  // Record the broadcast first — the in-app Notifications screens read this
+  // table, so the message lands even for users with push turned off.
   const { data, error } = await supabaseAdmin.from('push_notifications')
     .insert({ title: input.title, body: input.body, audience: input.audience, delivered: 0, opened: 0 })
     .select().single();
   if (error) throw new Error(error.message);
-  await writeAuditLog('Sent push notification', 'Notifications', `${input.audience}: ${input.title}`);
-  return { id: data.id, title: data.title, body: data.body, audience: data.audience, sentAt: data.sent_at, delivered: 0, opened: 0 };
+
+  // Then fan out to real devices.
+  let delivered = 0;
+  let failed = 0;
+  let sendError: string | null = null;
+  try {
+    const roles = rolesForAudience(input.audience);
+    let q = supabaseAdmin.from('device_tokens').select('token').eq('enabled', true);
+    if (roles) q = q.in('role', roles);
+    const { data: tokens, error: tokErr } = await q;
+    if (tokErr) throw tokErr;
+
+    if ((tokens ?? []).length) {
+      const result = await deliverViaExpo(tokens as { token: string }[], {
+        title: input.title,
+        body: input.body,
+        data: { notificationId: data.id, screen: 'Notifications' },
+      });
+      delivered = result.delivered;
+      failed = result.failed;
+      sendError = result.error;
+      if (result.dead.length) {
+        await supabaseAdmin.from('device_tokens')
+          .update({ enabled: false }).in('token', result.dead);
+      }
+    }
+  } catch (e: any) {
+    // migration-059 missing, or Expo unreachable. The broadcast row stands.
+    sendError = e?.message ?? 'Push delivery unavailable';
+  }
+
+  try {
+    await supabaseAdmin.from('push_notifications')
+      .update({ delivered, failed, send_error: sendError })
+      .eq('id', data.id);
+  } catch (_) { /* `failed` / `send_error` need migration-059 */ }
+
+  await writeAuditLog(
+    'Sent push notification',
+    'Notifications',
+    `${input.audience}: ${input.title} (${delivered} delivered, ${failed} failed)`,
+  );
+
+  return {
+    id: data.id, title: data.title, body: data.body, audience: data.audience,
+    sentAt: data.sent_at, delivered, opened: 0, failed, sendError,
+  };
+}
+
+// How many devices a given audience would actually reach right now, so the
+// compose screen can say "will reach 412 devices" before anything is sent.
+export async function countPushAudience(audience: string): Promise<number> {
+  try {
+    const roles = rolesForAudience(audience);
+    let q = supabaseAdmin
+      .from('device_tokens').select('id', { count: 'exact', head: true }).eq('enabled', true);
+    if (roles) q = q.in('role', roles);
+    const { count } = await q;
+    return count ?? 0;
+  } catch (_) {
+    return 0;   // migration-059 not applied yet
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1293,6 +2031,254 @@ export async function cleanupTestData(): Promise<number> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// FULL PLATFORM WIPE
+//
+// cleanupTestData() above only removes rows flagged is_test = true. This is the
+// other thing: empty the platform of REAL data before go-live, while leaving
+// the admin panel itself standing.
+//
+// KEPT   sub_admins + their auth users, features, platform_settings,
+//        pricing_rules, banners, lab_tests, sla_rules, audit_logs
+// WIPED  every organisation, staff member, patient, consultant, appointment,
+//        order, prescription, record, transaction, wallet, dispute, onboarding
+//        application — and every auth user that is not an admin.
+//
+// Irreversible. The UI gates it behind a typed confirmation.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type WipeReport = {
+  tables: { table: string; deleted: number; error: string | null }[];
+  authUsersDeleted: number;
+  adminsKept: number;
+  totalDeleted: number;
+  errors: string[];
+};
+
+// Child-before-parent. Every table here is data ABOUT the platform's users;
+// nothing in this list is configuration.
+const WIPE_ORDER = [
+  // Conversation / audit children first
+  'dispute_messages',
+  'sla_escalations',
+  'rmp_commissions',
+  'rmp_patients',
+  'record_notes',
+  'wallet_adjustments',
+  // Clinical + commercial records
+  'prescriptions',
+  'health_records',
+  'qr_checkins',
+  'patient_qr_tokens',
+  'emergency_admissions',
+  'doctor_schedule_exceptions',
+  'doctor_schedules',
+  'appointments',
+  'pharmacy_orders',
+  'lab_orders',
+  'homecare_orders',
+  'refunds',
+  'disputes',
+  'transactions',
+  'payouts',
+  'wallets',
+  'saved_addresses',
+  'family_profiles',
+  // People
+  'device_tokens',
+  'rmps',
+  'staff',
+  'profiles',
+  // Tenants
+  'onboarding_queue',
+  'organisations',
+] as const;
+
+// PostgREST refuses an unfiltered DELETE, so every wipe needs a predicate that
+// is true for every row. `id` covers all but two tables: rmp_patients has a
+// composite key and no id at all, and patient_qr_tokens keys on `token`.
+const WIPE_KEY: Record<string, string> = {
+  rmp_patients: 'rmp_id',
+  patient_qr_tokens: 'token',
+};
+
+async function wipeTable(table: string): Promise<{ table: string; deleted: number; error: string | null }> {
+  const key = WIPE_KEY[table] ?? 'id';
+  try {
+    const { count: before, error: countErr } = await supabaseAdmin
+      .from(table).select(key, { count: 'exact', head: true });
+    // Table absent on this project (its migration was never run) — nothing to
+    // wipe, and not a failure worth reporting.
+    if (countErr) return { table, deleted: 0, error: null };
+    if (!before) return { table, deleted: 0, error: null };
+
+    const { error } = await supabaseAdmin
+      .from(table).delete().not(key, 'is', null);
+    if (error) return { table, deleted: 0, error: error.message };
+
+    const { count: after } = await supabaseAdmin
+      .from(table).select(key, { count: 'exact', head: true });
+    return { table, deleted: (before ?? 0) - (after ?? 0), error: null };
+  } catch (e: any) {
+    return { table, deleted: 0, error: null };
+  }
+}
+
+export async function wipeAllPlatformData(): Promise<WipeReport> {
+  const errors: string[] = [];
+
+  // 1. Who must survive, so the panel can still be logged into afterwards.
+  //
+  //    The sub_admins TABLE is not the whole answer. The bootstrap super admin
+  //    is created by supabase/create-admin-user.mjs, which writes an auth user
+  //    carrying user_metadata.role = 'super_admin' and no sub_admins row at
+  //    all. An earlier version of this function keyed only on sub_admins and
+  //    duly deleted the one account that could log in — the wipe succeeded and
+  //    locked the operator out of their own panel.
+  //
+  //    So: keep anyone listed in sub_admins, AND anyone whose auth metadata
+  //    marks them as an admin.
+  const { data: admins } = await supabaseAdmin.from('sub_admins').select('user_id, email');
+  const keepIds = new Set<string>();
+  const keepEmails = new Set<string>();
+  (admins ?? []).forEach((a: any) => {
+    if (a.user_id) keepIds.add(a.user_id);
+    if (a.email) keepEmails.add(String(a.email).toLowerCase());
+  });
+
+  const isAdminAccount = (u: any) => {
+    const meta = u?.user_metadata ?? {};
+    return meta.role === 'super_admin' || meta.kind === 'sub_admin';
+  };
+
+  // Last line of defence: if this wipe would leave no way into the admin panel,
+  // stop before deleting anything. Recovering means re-running a script with the
+  // service-role key, which is exactly the situation an operator is least able
+  // to handle right after wiping their platform.
+  try {
+    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const survivors = (list?.users ?? []).filter((u: any) =>
+      keepIds.has(u.id)
+      || keepEmails.has((u.email ?? '').toLowerCase())
+      || isAdminAccount(u));
+    if (survivors.length === 0) {
+      throw new Error(
+        'Refusing to wipe: no admin account would survive. Create one first '
+        + '(node ../supabase/create-admin-user.mjs <email> <password>), or add a '
+        + 'row to sub_admins, otherwise this wipe would lock you out of the panel.',
+      );
+    }
+  } catch (e: any) {
+    // A genuine guard failure must stop the wipe; a listUsers outage must too,
+    // because we cannot prove anyone would be left.
+    throw new Error(e?.message ?? 'Could not verify an admin account would survive the wipe.');
+  }
+
+  // 2. Delete the data tables, children first.
+  const tables: WipeReport['tables'] = [];
+  for (const t of WIPE_ORDER) {
+    const result = await wipeTable(t);
+    tables.push(result);
+    if (result.error) errors.push(`${t}: ${result.error}`);
+  }
+
+  // 3. Delete every non-admin auth user.
+  //
+  //    Always re-reads page 1: each delete shifts the remaining users up, so
+  //    paging forward would step over accounts. The pass ends when a full
+  //    sweep finds nothing left to delete — or when only admins remain.
+  let authUsersDeleted = 0;
+  try {
+    for (let pass = 0; pass < 200; pass++) {
+      const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      if (error) { errors.push(`auth.listUsers: ${error.message}`); break; }
+
+      const users = list?.users ?? [];
+      const deletable = users.filter((u: any) =>
+        !keepIds.has(u.id)
+        && !keepEmails.has((u.email ?? '').toLowerCase())
+        && !isAdminAccount(u));
+      if (deletable.length === 0) break;
+
+      let deletedThisPass = 0;
+      for (const u of deletable) {
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(u.id);
+          authUsersDeleted += 1;
+          deletedThisPass += 1;
+        } catch (e: any) {
+          // Record once and keep going; a single stuck account must not abort
+          // the wipe, but an endless retry loop would.
+          errors.push(`auth user ${u.email || u.id}: ${e?.message ?? 'delete failed'}`);
+          keepIds.add(u.id);
+        }
+      }
+      if (deletedThisPass === 0) break;
+    }
+  } catch (e: any) {
+    errors.push(`auth cleanup: ${e?.message ?? 'unknown error'}`);
+  }
+
+  const totalDeleted = tables.reduce((n, t) => n + t.deleted, 0);
+  await writeAuditLog(
+    "Wiped all platform data",
+    "Danger Zone",
+    `${totalDeleted} rows, ${authUsersDeleted} auth users (${keepIds.size} admins kept)`,
+  );
+
+  return {
+    tables,
+    authUsersDeleted,
+    adminsKept: keepIds.size,
+    totalDeleted,
+    errors,
+  };
+}
+
+// What the confirmation dialog shows before anything is destroyed.
+//
+// `survivingAdmins` is the important half. The first version of this feature
+// reported only row counts, so there was no way to notice that the account you
+// were logged in with was about to be deleted — which is exactly what happened.
+export type WipePreview = {
+  tables: { table: string; rows: number }[];
+  survivingAdmins: string[];
+};
+
+export async function previewWipe(): Promise<WipePreview> {
+  const tables: { table: string; rows: number }[] = [];
+  for (const t of WIPE_ORDER) {
+    try {
+      const key = WIPE_KEY[t] ?? 'id';
+      const { count, error } = await supabaseAdmin
+        .from(t).select(key, { count: 'exact', head: true });
+      if (!error && count) tables.push({ table: t, rows: count });
+    } catch (_) { /* table not present on this project */ }
+  }
+  tables.sort((a, b) => b.rows - a.rows);
+
+  // Mirror wipeAllPlatformData's keep rules exactly, or the preview lies.
+  const survivingAdmins: string[] = [];
+  try {
+    const { data: subAdmins } = await supabaseAdmin.from('sub_admins').select('user_id, email');
+    const keepIds = new Set((subAdmins ?? []).map((a: any) => a.user_id).filter(Boolean));
+    const keepEmails = new Set(
+      (subAdmins ?? []).map((a: any) => String(a.email ?? '').toLowerCase()).filter(Boolean),
+    );
+    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    (list?.users ?? []).forEach((u: any) => {
+      const meta = u.user_metadata ?? {};
+      const kept = keepIds.has(u.id)
+        || keepEmails.has((u.email ?? '').toLowerCase())
+        || meta.role === 'super_admin'
+        || meta.kind === 'sub_admin';
+      if (kept && u.email) survivingAdmins.push(u.email);
+    });
+  } catch (_) { /* leave empty; the UI treats that as a blocker */ }
+
+  return { tables, survivingAdmins };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SIDEBAR BADGE COUNTS  (live counts for the nav badges)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1325,17 +2311,35 @@ export type Feature = {
   description: string | null;
   app: 'patient' | 'provider' | 'both';
   category: 'product' | 'service' | 'system';
+  audience: FeatureAudience;
+  sortOrder: number;
   enabled: boolean;
+  updatedAt: string | null;
 };
 
 export async function listFeatures(): Promise<Feature[]> {
   const { data, error } = await supabaseAdmin
     .from('features')
     .select('*')
-    .order('category')
     .order('name');
   if (error) throw new Error(error.message);
-  return (data ?? []) as Feature[];
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    key: r.key,
+    name: r.name,
+    description: r.description ?? null,
+    app: r.app,
+    category: r.category,
+    // Fall back to 'platform' rather than 'patient' when migration-060 hasn't
+    // been applied: an unclassified switch showing up under "Patient App"
+    // would be an actively wrong claim about who it affects.
+    audience: (FEATURE_AUDIENCES as readonly string[]).includes(r.audience)
+      ? (r.audience as FeatureAudience)
+      : 'platform',
+    sortOrder: Number(r.sort_order ?? 100),
+    enabled: !!r.enabled,
+    updatedAt: r.updated_at ?? null,
+  }));
 }
 
 export async function setFeature(id: string, enabled: boolean): Promise<void> {

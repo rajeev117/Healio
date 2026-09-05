@@ -6,11 +6,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
+// The stand-in code, defined once in env.js. See there for why it exists and
+// what has to happen before real verification is possible.
+import { TEST_OTP } from '../lib/env';
 
 const OTP_LENGTH = 4;
-// Test mode — same fixed code the patient OTP flow accepts. Swap for a real
-// SMS provider (Supabase phone auth / MSG91) before production.
-const TEST_OTP = '1111';
 
 export default function OtpVerifyModal({ visible, phone, onVerified, onClose }) {
   const { t } = useLanguage();
@@ -67,7 +67,7 @@ export default function OtpVerifyModal({ visible, phone, onVerified, onClose }) 
   const handleVerify = () => {
     if (!isComplete || submitting.current) return;
     if (otp !== TEST_OTP) {
-      setErrorMsg(t('otp_err_incorrect'));
+      setErrorMsg(t('otp_err_incorrect', { code: TEST_OTP }));
       setOtpDigits(Array.from({ length: OTP_LENGTH }, () => ''));
       otpRefs.current[0]?.focus();
       return;
@@ -83,7 +83,7 @@ export default function OtpVerifyModal({ visible, phone, onVerified, onClose }) 
 
   const handleResend = () => {
     setOtpDigits(Array.from({ length: OTP_LENGTH }, () => ''));
-    setErrorMsg(t('otp_resent'));
+    setErrorMsg(t('otp_resent', { code: TEST_OTP }));
     otpRefs.current[0]?.focus();
   };
 
@@ -109,7 +109,7 @@ export default function OtpVerifyModal({ visible, phone, onVerified, onClose }) 
 
           <View style={styles.noticeBanner}>
             <Ionicons name="information-circle" size={16} color={COLORS.primary} />
-            <Text style={styles.noticeText}>{t('otp_test_notice')}</Text>
+            <Text style={styles.noticeText}>{t('otp_test_notice', { code: TEST_OTP })}</Text>
           </View>
 
           <View style={styles.otpRow}>

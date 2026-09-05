@@ -214,6 +214,13 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 17,
   },
+  mapPickBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: 10, paddingVertical: 11, paddingHorizontal: 12,
+    borderRadius: 12, borderWidth: 1, borderStyle: 'dashed',
+    borderColor: COLORS.border, backgroundColor: COLORS.surface,
+  },
+  mapPickText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.primary },
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',

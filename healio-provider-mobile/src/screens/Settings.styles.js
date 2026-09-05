@@ -28,12 +28,6 @@ const styles = StyleSheet.create({
     padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   rowText: { color: COLORS.text, fontWeight: '700' },
-  devBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#fca5a5',
-    borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16,
-  },
-  devBtnText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#dc2626' },
 });
 
 export default styles;

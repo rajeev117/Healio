@@ -122,9 +122,13 @@ export default function Home({ navigation, route }) {
   const [showMap, setShowMap] = useState(false);
   const [savedCoords, setSavedCoords] = useState(null);
 
-  const handleMapConfirm = async ({ latitude, longitude }) => {
+  const handleMapConfirm = async ({ latitude, longitude, address: picked, city: pickedCity }) => {
     setShowMap(false);
-    const loc = await reverseGeocode(latitude, longitude);
+    // A Places search result already names the spot; only fall back to a
+    // reverse-geocode round trip when the pin was dragged instead.
+    const loc = (picked && pickedCity)
+      ? { name: picked, city: pickedCity, area: null }
+      : await reverseGeocode(latitude, longitude);
     selectLocation({ id: 'map', name: loc.name });
     setSavedCoords({ latitude, longitude });
     await persistCity(loc.city || loc.name, { area: loc.area || null, latitude, longitude });

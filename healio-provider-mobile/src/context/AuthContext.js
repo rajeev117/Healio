@@ -124,7 +124,11 @@ export function AuthProvider({ children }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const userData = await resolveRole();
-          if (userData) {
+          // A provider suspended from the admin panel since their last launch
+          // must not be restored into a dashboard from the persisted session.
+          if (userData?.blocked) {
+            await supabase.auth.signOut();
+          } else if (userData) {
             setUser(userData);
             // Hydrate real data in the background — don't await so the app opens fast
             useStore.getState().hydrateFromSupabase();
@@ -142,7 +146,35 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login  = (userData) => setUser(userData);
-  const logout = () => setUser(null);
+  const logout = () => {
+    // Retire this device's push token before dropping the user, so a shared
+    // handset doesn't keep delivering the previous account's notifications.
+    import('../lib/push')
+      .then((m) => m.unregisterPushToken())
+      .catch(() => {});
+    setUser(null);
+  };
+
+  // Register this install for push whenever someone is signed in. Runs on
+  // login AND on a restored session, and re-runs if the role changes, so the
+  // admin panel can target "all pharmacies" without a join. Fails soft —
+  // see src/lib/push.js for the Expo Go / web / permission caveats.
+  useEffect(() => {
+    if (!user?.userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { registerPushToken } = await import('../lib/push');
+        if (cancelled) return;
+        await registerPushToken({
+          userId: user.userId,
+          role: user.role,
+          app: user.role === 'patient' ? 'patient' : 'provider',
+        });
+      } catch (_) { /* push is best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.userId, user?.role]);
 
   // Show a brief spinner while checking stored session — never a blank screen
   if (!sessionReady) {

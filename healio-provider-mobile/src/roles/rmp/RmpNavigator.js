@@ -14,6 +14,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from './constants/theme';
+import { withFeature, useFeatureEnabled, hiddenTabOptions } from '../../components/FeatureGate';
 
 import Dashboard from './screens/Dashboard';
 import Bookings from './screens/Bookings';
@@ -43,8 +44,22 @@ import EmergencyAdmission from './screens/EmergencyAdmission';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// Wrapped once at module scope: a component type created during render is a new
+// type every pass, which remounts the screen and loses its state.
+const GatedEarnings   = withFeature('rmp_payouts',             Earnings,           'Earnings & Payouts');
+const GatedLinkPatient = withFeature('rmp_patient_linking',    LinkPatient,        'Patient Linking');
+const GatedNewPatient  = withFeature('rmp_patient_linking',    NewPatient,         'Patient Linking');
+const GatedManage      = withFeature('rmp_patient_linking',    ManagePatient,      'Patient Linking');
+const GatedLabBooking  = withFeature('rmp_lab_booking',        LabBooking,         'Lab Booking');
+const GatedPharmOrder  = withFeature('rmp_pharmacy_orders',    PharmacyOrder,      'Pharmacy Orders');
+const GatedEmergency   = withFeature('rmp_emergency_admission', EmergencyAdmission, 'Emergency Admission');
+
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  // Admin-controlled (migration-063). Hidden rather than removed so Dashboard's
+  // jumps to sibling tabs still resolve.
+  const payoutsOn  = useFeatureEnabled('rmp_payouts');
+  const patientsOn = useFeatureEnabled('rmp_patient_linking');
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -73,8 +88,10 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={Dashboard} />
       <Tab.Screen name="Bookings" component={Bookings} />
-      <Tab.Screen name="Patients" component={Patients} />
-      <Tab.Screen name="Earnings" component={Earnings} />
+      <Tab.Screen name="Patients" component={Patients}
+        options={hiddenTabOptions(patientsOn)} />
+      <Tab.Screen name="Earnings" component={GatedEarnings}
+        options={hiddenTabOptions(payoutsOn)} />
       <Tab.Screen name="Profile" component={Profile} />
     </Tab.Navigator>
   );
@@ -88,15 +105,15 @@ export default function RmpNavigator({ initialRouteName = 'Main' }) {
     >
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="Services" component={Services} />
-      <Stack.Screen name="LinkPatient" component={LinkPatient} />
-      <Stack.Screen name="NewPatient" component={NewPatient} />
+      <Stack.Screen name="LinkPatient"        component={GatedLinkPatient} />
+      <Stack.Screen name="NewPatient"         component={GatedNewPatient} />
       <Stack.Screen name="ConsentOTP" component={ConsentOTP} />
       <Stack.Screen name="SelectPatientProfile" component={SelectPatientProfile} />
       <Stack.Screen name="FindProvider" component={FindProvider} />
       {/* Lab / pharmacy / hospital: pick the facility, then its own flow. */}
       <Stack.Screen name="FindFacility" component={FindFacility} />
-      <Stack.Screen name="RmpLabBooking" component={LabBooking} />
-      <Stack.Screen name="RmpPharmacyOrder" component={PharmacyOrder} />
+      <Stack.Screen name="RmpLabBooking"      component={GatedLabBooking} />
+      <Stack.Screen name="RmpPharmacyOrder"   component={GatedPharmOrder} />
       <Stack.Screen name="OrderRequestStatus" component={OrderRequestStatus} />
       <Stack.Screen name="SlotSelection" component={SlotSelection} />
       <Stack.Screen name="ReviewBooking" component={ReviewBooking} />
@@ -105,8 +122,8 @@ export default function RmpNavigator({ initialRouteName = 'Main' }) {
       <Stack.Screen name="PaymentFailed" component={PaymentFailed} />
       <Stack.Screen name="PatientJourney" component={PatientJourney} />
       <Stack.Screen name="RmpQR" component={RmpQR} />
-      <Stack.Screen name="ManagePatient" component={ManagePatient} />
-      <Stack.Screen name="EmergencyAdmission" component={EmergencyAdmission} />
+      <Stack.Screen name="ManagePatient"      component={GatedManage} />
+      <Stack.Screen name="EmergencyAdmission" component={GatedEmergency} />
     </Stack.Navigator>
   );
 }

@@ -9,7 +9,9 @@ const breadcrumbMap: Record<string, string> = {
   'onboarding-queue': 'Onboarding Queue',
   users: 'Users',
   patients: 'Patients',
-  providers: 'Providers',
+  providers: 'Organisation Staff',
+  'individual-providers': 'Independent Providers',
+  rmps: 'Healthcare Consultants',
   'sub-admins': 'Sub-Admins',
   'feature-flags': 'Feature Flags',
   'kill-switches': 'Kill Switches',
@@ -31,7 +33,12 @@ const breadcrumbMap: Record<string, string> = {
   'audit-logs': 'Audit Logs',
   settings: 'Settings',
   'dev-tools': 'Dev Tools',
+  features: 'Features',
 };
+
+// A route with no entry above used to render its raw slug in the breadcrumb.
+const prettifySegment = (seg: string) =>
+  seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -57,7 +64,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
             <span key={seg} className="flex items-center gap-1">
               {i > 0 && <ChevronRight className="w-3 h-3 text-text-muted" />}
               <span className={i === segments.length - 1 ? 'font-700 text-text' : 'text-text-secondary'}>
-                {breadcrumbMap[seg] || seg}
+                {breadcrumbMap[seg] ?? prettifySegment(seg)}
               </span>
             </span>
           ))}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,12 @@ import { COLORS } from './src/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import AnimatedScreen from './src/components/AnimatedScreen';
 import EmergencyAdmissionAlert from './src/components/EmergencyAdmissionAlert';
+import { addPushListeners } from './src/lib/push';
+import { withFeature, useFeatureEnabled } from './src/components/FeatureGate';
+
+// Held outside the tree so the push tap handler can navigate without being
+// mounted inside a screen. See usePushTapNavigation below.
+const navigationRef = createNavigationContainerRef();
 
 // Auth
 import { AuthProvider, useAuth, ROLES } from './src/context/AuthContext';
@@ -62,7 +68,6 @@ import Prescriptions       from './src/screens/Prescriptions';
 import Chat                from './src/screens/Chat';
 import VideoConsultation   from './src/screens/VideoConsultation';
 import StaffManagement     from './src/screens/StaffManagement';
-import DevPanel            from './src/screens/DevPanel';
 import PatientRecords      from './src/screens/PatientRecords';
 import Earnings            from './src/screens/Earnings';
 import ScanPatient         from './src/screens/ScanPatient';
@@ -111,10 +116,18 @@ const SubscriptionA         = withAnimation(Subscription);
 const LedgerA               = withAnimation(Ledger);
 const EarningsA             = withAnimation(Earnings);
 const StaffManagementA      = withAnimation(StaffManagement);
-const DevPanelA             = withAnimation(DevPanel);
 const PatientRecordsA       = withAnimation(PatientRecords);
 const ScanPatientA          = withAnimation(ScanPatient);
 const HospitalQRA           = withAnimation(HospitalQR);
+
+// Hospital capabilities the admin panel can switch off (migration-063).
+// Wrapped at module scope so the component type is stable across renders —
+// creating it during render would remount the screen and lose its state.
+const GatedStaffManagement  = withFeature('hospital_staff_management', StaffManagementA, 'Staff Management');
+const GatedLedger           = withFeature('hospital_ledger',           LedgerA,          'Ledger & Payouts');
+const GatedReports          = withFeature('hospital_reports',          ReportsA,         'Reports');
+const GatedHospitalQR       = withFeature('hospital_qr_checkin',       HospitalQRA,      'QR Check-in');
+const GatedScanPatient      = withFeature('hospital_qr_checkin',       ScanPatientA,     'QR Check-in');
 
 // ─── Navigators ───────────────────────────────────────────────────────────────
 const Tab   = createBottomTabNavigator();
@@ -151,6 +164,9 @@ function useTabScreenOptions() {
 }
 
 function AdminTabs() {
+  // The alert subscribes to emergency_admissions and rings; when the feature is
+  // off it simply isn't mounted, so nothing subscribes.
+  const emergencyOn = useFeatureEnabled('hospital_emergency_admissions');
   return (
     <>
       <Tab.Navigator screenOptions={useTabScreenOptions()}>
@@ -162,7 +178,7 @@ function AdminTabs() {
         <Tab.Screen name="Appointments" component={Appointments} options={{ title: 'Appointments', tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       </Tab.Navigator>
       {/* RMP-raised emergency admissions ring here (blink + vibrate + 5-min accept) */}
-      <EmergencyAdmissionAlert />
+      {emergencyOn && <EmergencyAdmissionAlert />}
     </>
   );
 }
@@ -249,29 +265,50 @@ function AppStack() {
       <Stack.Screen name="VideoConsultation"   component={VideoConsultA} options={{ headerShown: false }} />
       <Stack.Screen name="HomeCareOrderDetail" component={HomeCareOrderDetailA} />
       <Stack.Screen name="Billing"             component={BillingA} />
-      <Stack.Screen name="Reports"             component={ReportsA} />
+      <Stack.Screen name="Reports"             component={GatedReports} />
       <Stack.Screen name="Notifications"       component={NotificationsA} />
       <Stack.Screen name="Support"             component={SupportA} />
       <Stack.Screen name="Settings"            component={SettingsA} />
       <Stack.Screen name="Subscription"        component={SubscriptionA} />
-      <Stack.Screen name="Ledger"              component={LedgerA} />
+      <Stack.Screen name="Ledger"              component={GatedLedger} />
       <Stack.Screen name="Earnings"            component={EarningsA} />
-      <Stack.Screen name="StaffManagement"     component={StaffManagementA} />
-      <Stack.Screen name="DevPanel"            component={DevPanelA} />
+      <Stack.Screen name="StaffManagement"     component={GatedStaffManagement} />
       <Stack.Screen name="PatientRecords"      component={PatientRecordsA} />
-      <Stack.Screen name="ScanPatient"         component={ScanPatientA} />
-      <Stack.Screen name="HospitalQR"          component={HospitalQRA} />
+      <Stack.Screen name="ScanPatient"         component={GatedScanPatient} />
+      <Stack.Screen name="HospitalQR"          component={GatedHospitalQR} />
     </Stack.Navigator>
   );
 }
 
+// Tapping a push notification should land on the thing it is about. The admin
+// broadcast sends `data.screen` (and optional `data.params`); anything else —
+// or a tap before the navigator is ready — falls back to the Notifications
+// list rather than doing nothing.
+function usePushTapNavigation() {
+  useEffect(() => {
+    const go = (screen, params) => {
+      if (!navigationRef.isReady()) return;
+      try { navigationRef.navigate(screen, params); }
+      catch (_) { navigationRef.navigate('Notifications'); }
+    };
+    return addPushListeners(
+      null,
+      (response) => {
+        const data = response?.notification?.request?.content?.data || {};
+        go(data.screen || 'Notifications', data.params);
+      },
+    );
+  }, []);
+}
+
 export default function App() {
+  usePushTapNavigation();
   return (
     <SafeAreaProvider>
       <LanguageProvider>
         <AuthProvider>
           <PlatformConfigProvider>
-            <NavigationContainer>
+            <NavigationContainer ref={navigationRef}>
               <AppStack />
             </NavigationContainer>
           </PlatformConfigProvider>

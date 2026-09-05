@@ -23,6 +23,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { supabase, lookupPhoneAccount, accountKindLabelKey } from '../lib/supabase';
 import { uploadLocalFile } from '../lib/storage';
 import OtpVerifyModal from '../components/OtpVerifyModal';
+import MapPickerModal from '../components/MapPickerModal';
+import { nameProblem, isValidPhone, isValidEmail, isValidPincode } from '../lib/validation';
 import styles from './Signup.styles';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,7 +116,12 @@ export default function Signup({ navigation, route }) {
     defaultSlots: '',
     docs: { registration: false, license: false, id: false },
     docFiles: { registration: '', license: '', id: '' },
+    // Captured from the map picker. Without these an approved provider has no
+    // coordinates, so it can never appear in the patient app's "nearest" sort.
+    latitude: null,
+    longitude: null,
   });
+  const [showMap, setShowMap] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -146,6 +153,20 @@ export default function Signup({ navigation, route }) {
   // migration-033). Stores the storage path (not a public URL — the
   // verification-docs bucket is private; admin/service-role generates
   // signed URLs to actually view these).
+  // Picking on the map fills street + city and, crucially, records the
+  // coordinates the text fields alone can never give us.
+  const onMapConfirm = ({ latitude, longitude, address, city }) => {
+    setShowMap(false);
+    setData((d) => ({
+      ...d,
+      latitude,
+      longitude,
+      ...(address ? { address } : {}),
+      ...(city ? { city } : {}),
+    }));
+    setErrors((e) => ({ ...e, address: undefined, city: undefined }));
+  };
+
   const [uploadingDoc, setUploadingDoc] = useState(null);
 
   const promptUploadDoc = (key) => {
@@ -225,15 +246,18 @@ export default function Signup({ navigation, route }) {
   const validateStep = () => {
     const next = {};
     if (current === 'verify') {
-      if (!data.hospitalName.trim()) {
+      const nameIssue = nameProblem(data.hospitalName, { org: true });
+      if (nameIssue === 'required') {
         next.hospitalName = isHospital ? t('hsignup_err_name') : t('isignup_err_name', { kind: kindLabel });
+      } else if (nameIssue === 'invalid') {
+        next.hospitalName = t('err_name_invalid');
       }
-      if (!data.phone.trim() || !/^[6-9][0-9]{9}$/.test(data.phone)) next.phone = t('hsignup_err_phone');
-      if (data.email && !/\S+@\S+\.\S+/.test(data.email)) next.email = t('hsignup_err_email');
+      if (!isValidPhone(data.phone)) next.phone = t('hsignup_err_phone');
+      if (!isValidEmail(data.email)) next.email = t('hsignup_err_email');
     } else if (current === 'details') {
       if (!data.address.trim()) next.address = t('hsignup_err_address');
       if (!data.city.trim()) next.city = t('hsignup_err_city');
-      if (!data.pincode.trim() || !/^[0-9]{6}$/.test(data.pincode)) next.pincode = t('hsignup_err_pincode');
+      if (!isValidPincode(data.pincode)) next.pincode = t('hsignup_err_pincode');
       // Beds are a hospital concept — an independent lab or pharmacy has none.
       if (isHospital && (!data.beds.trim() || Number.isNaN(Number(data.beds)))) next.beds = t('hsignup_err_beds');
     } else if (current === 'opd') {
@@ -308,6 +332,8 @@ export default function Signup({ navigation, route }) {
         admin_phone:   `+91${data.phone.trim()}`,
         admin_email:   emailTrimmed || null,
         address:       data.address.trim(),
+        latitude:      data.latitude,
+        longitude:     data.longitude,
         beds:          isHospital ? parseInt(data.beds, 10) : null,
         departments:   isHospital ? data.selectedDepts : [],
         documents:     Object.keys(data.docs).filter((k) => data.docs[k]),
@@ -324,12 +350,14 @@ export default function Signup({ navigation, route }) {
         applied_at:    new Date().toISOString(),
       };
       let { error } = await supabase.from('onboarding_queue').insert(onboardingRow);
-      if (error && (error.code === '42703' || /document_urls/i.test(error.message || ''))) {
-        // migration-019 not applied yet — submit without it rather than
-        // blocking the whole application. The uploaded files still exist in
-        // storage; document_urls can be backfilled once the column exists.
-        const { document_urls, ...withoutDocUrls } = onboardingRow;
-        ({ error } = await supabase.from('onboarding_queue').insert(withoutDocUrls));
+      if (error && (error.code === '42703' || /document_urls|latitude|longitude/i.test(error.message || ''))) {
+        // A newer column isn't in this project's schema yet (document_urls is
+        // migration-019, the coordinates are migration-062). Submitting the
+        // application matters more than the extra fields — drop them and retry
+        // rather than blocking the whole signup. The uploaded files still exist
+        // in storage, so document_urls can be backfilled later.
+        const { document_urls, latitude, longitude, ...withoutNewCols } = onboardingRow;
+        ({ error } = await supabase.from('onboarding_queue').insert(withoutNewCols));
       }
       if (error) throw error;
     } catch (e) {
@@ -519,6 +547,19 @@ export default function Signup({ navigation, route }) {
                   />
                 </View>
                 {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
+
+                <TouchableOpacity style={styles.mapPickBtn} onPress={() => setShowMap(true)} activeOpacity={0.85}>
+                  <Ionicons
+                    name={data.latitude != null ? 'checkmark-circle' : 'map-outline'}
+                    size={16}
+                    color={data.latitude != null ? '#2f855a' : COLORS.primary}
+                  />
+                  <Text style={[styles.mapPickText, data.latitude != null && { color: '#2f855a' }]}>
+                    {data.latitude != null
+                      ? `${t('hsignup_location_set')} (${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)})`
+                      : t('hsignup_pick_on_map')}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.gridRow}>
@@ -746,6 +787,15 @@ export default function Signup({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <MapPickerModal
+        visible={showMap}
+        initialLat={data.latitude}
+        initialLng={data.longitude}
+        title="Set your location"
+        onClose={() => setShowMap(false)}
+        onConfirm={onMapConfirm}
+      />
 
       <OtpVerifyModal
         visible={otpVisible}

@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import CalendarPicker from '../components/CalendarPicker';
 import { lookupPhoneAccount } from '../../../lib/supabase';
+import { nameProblem, isValidPhone } from '../../../lib/validation';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -43,16 +44,33 @@ export default function Signup({ navigation }) {
   const [showBloodModal, setShowBloodModal] = useState(false);
 
   const [phoneError, setPhoneError] = useState('');
+  const [nameError, setNameError] = useState('');
   const [checking, setChecking] = useState(false);
 
   // Name, phone and date of birth are required; email + blood group are optional.
-  const isFormValid = name.trim().length > 0 && phone.trim().length === 10 && pickedDate !== null;
+  // The name rule is shared with every other signup form (src/lib/validation)
+  // so "." or "1" can no longer reach a patient-facing screen.
+  const isFormValid =
+    nameProblem(name) === null && isValidPhone(phone) && pickedDate !== null;
 
   // Refuse a number that already has an account — of any kind. Every role shares
   // one derived auth account per phone, so continuing would sign into the
   // existing one and add a patient profile on top of, say, a doctor.
   const handleSignup = async () => {
-    if (!isFormValid || checking) return;
+    if (checking) return;
+    const issue = nameProblem(name);
+    if (issue) {
+      setNameError(issue === 'required'
+        ? 'Please enter your full name.'
+        : 'Enter a real name — letters, spaces, apostrophes and hyphens only.');
+      return;
+    }
+    if (!isValidPhone(phone)) {
+      setPhoneError('Enter a valid 10-digit mobile number starting with 6-9.');
+      return;
+    }
+    if (!isFormValid) return;
+    setNameError('');
     setPhoneError('');
     setChecking(true);
     const { kind } = await lookupPhoneAccount(phone);
@@ -104,11 +122,18 @@ export default function Signup({ navigation }) {
                 style={styles.textInput}
                 placeholder={t('full_name_ph')}
                 value={name}
-                onChangeText={setName}
+                onChangeText={(v) => { setName(v); if (nameError) setNameError(''); }}
                 placeholderTextColor={COLORS.textSecondary}
                 autoCapitalize="words"
               />
             </View>
+
+            {!!nameError && (
+              <View style={styles.errorRow}>
+                <Ionicons name="alert-circle-outline" size={15} color="#dc2626" />
+                <Text style={styles.errorText}>{nameError}</Text>
+              </View>
+            )}
 
             {/* Phone Number */}
             <Text style={[styles.inputLabel, { marginTop: SPACING.m }]}>{t('phone_number')} *</Text>

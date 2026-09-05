@@ -29,13 +29,20 @@ export default function Settings({ navigation }) {
   const [defaultSlots, setDefaultSlots] = useState('');
   const [savingDefaults, setSavingDefaults] = useState(false);
 
-  const onMapConfirm = async ({ latitude, longitude }) => {
+  const onMapConfirm = async ({ latitude, longitude, address: picked, city: pickedCity }) => {
     setShowMap(false);
     setCoords({ latitude, longitude });
+    // A Places search result already carries its own address — trust it over a
+    // second reverse-geocode of the same point.
+    if (picked) {
+      setAddress(picked);
+      if (pickedCity) setCity(pickedCity);
+      if (pickedCity) return;
+    }
     try {
       const loc = await reverseGeocode(latitude, longitude);
       if (loc.city) setCity(loc.city);
-      if (loc.address) setAddress(loc.address);
+      if (loc.address && !picked) setAddress(loc.address);
     } catch (e) { /* coords still set */ }
   };
 
@@ -208,19 +215,6 @@ export default function Settings({ navigation }) {
               ) : (
                 <Text style={styles.note}>Only the hospital admin can edit consultation defaults.</Text>
               )}
-            </View>
-          ),
-        },
-        {
-          title: 'Developer',
-          children: (
-            <View style={styles.stack}>
-              <TouchableOpacity style={styles.devBtn} onPress={() => navigation.navigate('DevPanel')}>
-                <Ionicons name="code-slash" size={18} color="#dc2626" />
-                <Text style={styles.devBtnText}>Open Dev Panel</Text>
-                <Ionicons name="chevron-forward" size={16} color="#dc2626" />
-              </TouchableOpacity>
-              <Text style={styles.note}>Test credentials and Supabase table reference. Dev only.</Text>
             </View>
           ),
         },

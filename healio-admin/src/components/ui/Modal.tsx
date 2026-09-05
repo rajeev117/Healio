@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,7 +15,6 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -22,9 +22,21 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  // A portal needs a real DOM node, which doesn't exist while rendering on the
+  // server. No hydration mismatch to worry about: a portal renders nothing at
+  // its own position in the tree, so server (null) and client agree there.
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
+  // Rendered into <body>, NOT in place.
+  //
+  // AdminShell's <main> carries `.page-enter`, whose animation uses
+  // `fill-mode: both` — so `transform: scale(1)` stays applied after it
+  // finishes. Any non-`none` transform makes that element the containing block
+  // for `position: fixed` descendants, so `inset-0` anchored to <main> rather
+  // than the viewport: on a scrolled page the dialog rendered far above the
+  // fold and looked like nothing had happened. A portal sidesteps ancestor
+  // transforms entirely, here and for any future one.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
@@ -49,7 +61,8 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

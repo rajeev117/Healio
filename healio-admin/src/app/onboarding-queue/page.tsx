@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Check, X, Eye, MapPin, Clock } from 'lucide-react';
+import { Check, X, Eye, MapPin, Clock, FileText, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
@@ -8,10 +8,16 @@ import { ConfirmModal, TextInputModal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
 import { onboardingApi, auditApi } from '@/lib/api';
 
+type VerificationDoc = { label: string; path: string | null; url: string | null };
+
 type OrgItem = {
   id: string; name: string; type: string; city: string; country: string;
   appliedAt: string; contactName: string; contactEmail: string; contactPhone: string;
   documents: string[]; notes: string; status: 'pending' | 'approved' | 'rejected';
+  address: string | null; latitude: number | null; longitude: number | null;
+  // The uploaded KYC files, each with a short-lived signed URL. The private
+  // verification-docs bucket cannot be read from the browser directly.
+  docs: VerificationDoc[];
 };
 
 export default function OnboardingQueuePage() {
@@ -126,17 +132,68 @@ export default function OnboardingQueuePage() {
                   <p className="text-xs text-text-secondary">{selectedOrg.contactPhone}</p>
                 </div>
                 <div className="bg-surface-2 rounded-xl p-4">
-                  <p className="text-[10px] font-700 text-text-muted uppercase tracking-wider mb-3">Documents Submitted</p>
-                  <div className="space-y-1.5">
-                    {selectedOrg.documents.map(doc => (
-                      <div key={doc} className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-success" />
-                        <span className="text-xs font-600 text-text">{doc}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-[10px] font-700 text-text-muted uppercase tracking-wider mb-3">
+                    Documents Submitted
+                  </p>
+                  {selectedOrg.docs.length === 0 ? (
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
+                      <p className="text-xs text-text-secondary">
+                        No documents were uploaded with this application.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {selectedOrg.docs.map((doc) => (
+                        <div key={doc.label} className="flex items-center gap-2">
+                          {doc.url ? (
+                            <>
+                              <FileText className="w-3.5 h-3.5 text-success shrink-0" />
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-600 text-primary hover:underline inline-flex items-center gap-1"
+                              >
+                                {doc.label}
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
+                              <span className="text-xs font-600 text-text-muted">
+                                {doc.label} — file missing
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {(selectedOrg.address || selectedOrg.latitude != null) && (
+                <div className="bg-surface-2 rounded-xl p-4 mb-6">
+                  <p className="text-[10px] font-700 text-text-muted uppercase tracking-wider mb-2">Address</p>
+                  {selectedOrg.address && (
+                    <p className="text-xs text-text-secondary leading-relaxed">{selectedOrg.address}</p>
+                  )}
+                  {selectedOrg.latitude != null && selectedOrg.longitude != null && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${selectedOrg.latitude},${selectedOrg.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-700 text-primary hover:underline"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      {selectedOrg.latitude.toFixed(5)}, {selectedOrg.longitude.toFixed(5)}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              )}
 
               <div className="bg-surface-2 rounded-xl p-4 mb-6">
                 <p className="text-[10px] font-700 text-text-muted uppercase tracking-wider mb-2">Notes</p>

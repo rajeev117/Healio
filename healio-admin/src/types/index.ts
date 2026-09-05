@@ -35,15 +35,34 @@ export interface Patient {
   lastActiveAt: string;
 }
 
+// A member of staff inside an organisation. Note this is NOT the same thing as
+// an "independent provider" — those are organisations in their own right (org
+// type clinic / diagnostic / pharmacy), listed on the Independent Providers
+// page and detailed under /organisations.
+export type StaffRole =
+  | 'doctor' | 'opd_assistant' | 'pharmacy_assistant'
+  | 'nurse' | 'receptionist' | 'lab_technician' | 'admin';
+
 export interface Provider {
   id: string;
   name: string;
+  /** Coarse bucket kept for existing callers. Prefer `role`. */
   type: 'doctor' | 'hospital' | 'lab' | 'pharmacy';
+  /** The actual staff_role from the database. */
+  role: StaffRole;
+  staffId?: string;
   specialty?: string;
   phone?: string;
+  email?: string;
   department?: string;
+  shift?: string;
+  photoUrl?: string;
   orgId: string;
   orgName: string;
+  orgType?: string;
+  orgStatus?: string;
+  /** Has this person ever logged in (staff.user_id is set)? */
+  linked: boolean;
   status: 'active' | 'suspended' | 'pending_verification';
   verifiedAt?: string;
   rating: number;

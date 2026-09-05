@@ -20,6 +20,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from './constants/theme';
+import { withFeature, useFeatureEnabled, hiddenTabOptions } from '../../components/FeatureGate';
 
 import Home from './screens/Home';
 import Appointments from './screens/Appointments';
@@ -33,8 +34,18 @@ import DoctorQR from './screens/DoctorQR';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// Wrapped once at module scope: a component type created during render is a new
+// type every pass, which remounts the screen and loses its state.
+const GatedSchedule    = withFeature('doctor_schedule',            Schedule,           'Schedule Management');
+const GatedUploadRx    = withFeature('doctor_prescription_upload', UploadPrescription, 'Prescription Upload');
+const GatedReferrals   = withFeature('doctor_referrals',           Referrals,          'Referrals');
+const GatedDoctorQR    = withFeature('doctor_qr',                  DoctorQR,           'Doctor QR Code');
+
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  // Admin-controlled (migration-063). Hidden rather than removed so anything
+  // navigating to 'Schedule' by name still resolves.
+  const scheduleOn = useFeatureEnabled('doctor_schedule');
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -64,7 +75,8 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="Appointments" component={Appointments} />
-      <Tab.Screen name="Schedule" component={Schedule} />
+      <Tab.Screen name="Schedule" component={GatedSchedule}
+        options={hiddenTabOptions(scheduleOn)} />
       <Tab.Screen name="Profile" component={Profile} />
     </Tab.Navigator>
   );
@@ -75,9 +87,9 @@ export default function IndependentDoctorNavigator({ initialRouteName = 'Main' }
     <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetail} />
-      <Stack.Screen name="UploadPrescription" component={UploadPrescription} />
-      <Stack.Screen name="Referrals" component={Referrals} />
-      <Stack.Screen name="DoctorQR" component={DoctorQR} />
+      <Stack.Screen name="UploadPrescription" component={GatedUploadRx} />
+      <Stack.Screen name="Referrals"          component={GatedReferrals} />
+      <Stack.Screen name="DoctorQR"           component={GatedDoctorQR} />
     </Stack.Navigator>
   );
 }

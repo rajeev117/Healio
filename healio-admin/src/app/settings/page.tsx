@@ -6,6 +6,7 @@ import { Toggle } from '@/components/ui/Toggle';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 import { settingsApi } from '@/lib/api';
+import { DangerZoneWipe } from '@/components/DangerZoneWipe';
 
 export default function SettingsPage() {
   const [platformName, setPlatformName] = useState('Healio');
@@ -183,6 +184,9 @@ export default function SettingsPage() {
           </div>
         </div>
       </Card>
+
+      {/* Danger Zone — full platform wipe (keeps the admin panel itself) */}
+      <DangerZoneWipe />
     </div>
   );
 }

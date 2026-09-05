@@ -7,10 +7,37 @@
 // Or pass custom email/password:
 //   node ../supabase/create-admin-user.mjs you@email.com yourpassword
 // ─────────────────────────────────────────────────────────────────────────────
-import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+// This folder has no node_modules of its own, and Node resolves bare imports
+// from the SCRIPT's location rather than the working directory — so a plain
+// `import '@supabase/supabase-js'` fails here with ERR_MODULE_NOT_FOUND no
+// matter where you run it from.
+//
+// Resolve it out of whichever sibling project has it installed instead.
+function loadSupabase() {
+  const roots = [
+    process.cwd(),                                   // e.g. healio-admin
+    join(process.cwd(), 'healio-admin'),             // repo root
+    join(process.cwd(), '..', 'healio-admin'),       // supabase/
+    join(process.cwd(), 'healio-provider-mobile'),
+  ];
+  for (const root of roots) {
+    try {
+      const require = createRequire(join(root, 'package.json'));
+      return require('@supabase/supabase-js');
+    } catch { /* try the next one */ }
+  }
+  console.error('Could not find @supabase/supabase-js.');
+  console.error('Run this from the healio-admin folder, which has it installed:');
+  console.error('  cd healio-admin');
+  console.error('  node ../supabase/create-admin-user.mjs you@email.com yourpassword');
+  process.exit(1);
+}
+
+const { createClient } = loadSupabase();
 
 // Load env from healio-admin/.env.local (cwd) or fall back to hardcoded
 function readEnv() {

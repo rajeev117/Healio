@@ -7,9 +7,9 @@ import { navApi } from '@/lib/api';
 import {
   LayoutDashboard, Building2, Users, UserCog, ToggleLeft,
   Zap, CalendarClock, ShoppingBag, AlertTriangle, Activity,
-  CreditCard, Wallet, RotateCcw, TrendingUp, Layers,
+  CreditCard, Wallet, RotateCcw, TrendingUp,
   DollarSign, Bell, Megaphone, ScrollText, Settings,
-  ChevronDown, Shield, LogOut, BarChart2, FlaskConical, Stethoscope,
+  ChevronDown, Shield, LogOut, BarChart2, FlaskConical, Stethoscope, BadgeCheck,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -32,7 +32,8 @@ const NAV_SECTIONS = [
     label: 'Users',
     items: [
       { href: '/users/patients', icon: Users, label: 'Patients' },
-      { href: '/users/providers', icon: UserCog, label: 'Providers' },
+      { href: '/users/providers', icon: UserCog, label: 'Organisation Staff' },
+      { href: '/users/individual-providers', icon: BadgeCheck, label: 'Independent Providers' },
       { href: '/users/rmps', icon: Stethoscope, label: 'Healthcare Consultants' },
       { href: '/users/sub-admins', icon: Shield, label: 'Sub-Admins' },
     ],
@@ -86,17 +87,32 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const router  = useRouter();
   const [counts, setCounts] = useState<Record<string, number>>({});
 
+  // Badge counts, refreshed on a timer rather than on every navigation.
+  //
+  // This used to depend on `pathname`, so each click fired getSidebarCounts()
+  // — five Supabase count queries — on top of whatever the page itself
+  // fetched. The badges are ambient information; a minute of staleness costs
+  // nothing, and moving between pages should not re-query the database.
   useEffect(() => {
-    navApi.counts()
-      .then((c) => setCounts({
-        '/onboarding-queue': c.onboarding,
-        '/operations/appointments': c.appointmentsToday,
-        '/operations/orders': c.orders,
-        '/operations/disputes': c.disputes,
-        '/financial/refunds': c.refunds,
-      }))
-      .catch((e) => console.error('Failed to load nav counts:', e));
-  }, [pathname]);
+    let cancelled = false;
+    const load = () => {
+      navApi.counts()
+        .then((c) => {
+          if (cancelled) return;
+          setCounts({
+            '/onboarding-queue': c.onboarding,
+            '/operations/appointments': c.appointmentsToday,
+            '/operations/orders': c.orders,
+            '/operations/disputes': c.disputes,
+            '/financial/refunds': c.refunds,
+          });
+        })
+        .catch((e) => console.error('Failed to load nav counts:', e));
+    };
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

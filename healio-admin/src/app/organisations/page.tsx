@@ -11,6 +11,7 @@ import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { cn, formatCurrency } from '@/lib/utils';
 import { orgApi, auditApi } from '@/lib/api';
 import type { Organisation } from '@/types';
+import { isValidOrgName, isValidPhone } from '@/lib/validation';
 
 const STATUS_FILTERS = ['All', 'Active', 'Trial', 'Suspended', 'Pending'] as const;
 const TYPE_FILTERS = ['All', 'Hospital', 'Clinic', 'Diagnostic', 'Pharmacy'] as const;
@@ -121,8 +122,13 @@ export default function OrganisationsPage() {
   const totalMRR = orgs.reduce((sum, o) => sum + o.mrr, 0);
   const totalPatients = orgs.reduce((sum, o) => sum + o.patientCount, 0);
 
+  // The phone becomes the provider's login credential, so it has to be a real
+  // Indian mobile number — not merely ten characters.
+  const formValid =
+    isValidOrgName(form.name) && !!form.city.trim() && isValidPhone(form.phone);
+
   const handleCreate = async () => {
-    if (!form.name.trim() || !form.city.trim() || form.phone.trim().length !== 10) return;
+    if (!formValid) return;
     setLoading(true);
     try {
       const newOrg = await orgApi.create({
@@ -242,7 +248,7 @@ export default function OrganisationsPage() {
         footer={
           <>
             <button onClick={() => setModal(null)} className="px-4 py-2 text-xs font-700 text-text-secondary border border-border rounded-lg hover:text-text transition-colors">Cancel</button>
-            <button onClick={handleCreate} disabled={loading || !form.name.trim() || !form.city.trim() || form.phone.trim().length !== 10}
+            <button onClick={handleCreate} disabled={loading || !formValid}
               className="px-4 py-2 text-xs font-700 text-white bg-primary rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-60">
               {loading ? 'Creating…' : 'Add Organisation'}
             </button>

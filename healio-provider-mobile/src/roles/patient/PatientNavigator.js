@@ -200,6 +200,27 @@ function PatientStack({ forcedInitial }) {
     return () => clearTimeout(timer);
   }, [forcedInitial]);
 
+  // Register this device for push as soon as a patient session exists, and
+  // again whenever auth changes (login / token refresh on a cold start).
+  // Patients never pass through AuthContext — they sign in inside this stack —
+  // so this is their equivalent of the provider-side hook in AuthContext.
+  useEffect(() => {
+    let cancelled = false;
+    const register = async (session) => {
+      if (cancelled || !session?.user?.id) return;
+      try {
+        const { registerPushToken } = await import('../../lib/push');
+        await registerPushToken({ userId: session.user.id, role: 'patient', app: 'patient' });
+      } catch (_) { /* push is best-effort */ }
+    };
+    supabase.auth.getSession().then(({ data }) => register(data?.session)).catch(() => {});
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => register(session));
+    return () => {
+      cancelled = true;
+      sub?.subscription?.unsubscribe?.();
+    };
+  }, []);
+
   if (isLoading || !authChecked) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>

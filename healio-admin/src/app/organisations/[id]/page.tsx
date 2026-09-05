@@ -3,9 +3,9 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Building2, MapPin, Users, UserCog, TrendingUp,
-  CreditCard, Pencil, Check, X, ShieldCheck, Ban, Wallet,
-  Star, AlertTriangle, Clock, Package, CalendarClock, Trash2,
-  ChevronRight, Zap, Plus, Phone,
+  CreditCard, Pencil, Check, X, Ban, Wallet,
+  AlertTriangle, Clock, Package, CalendarClock, Trash2,
+  ChevronRight, Zap, Plus, Phone, FileText, ExternalLink,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -14,8 +14,8 @@ import { Toggle } from '@/components/ui/Toggle';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { cn, formatCurrency } from '@/lib/utils';
 import { featureFlags } from '@/lib/mock-data';
-import { orgApi, patientApi, providerApi, appointmentApi, orderApi, transactionApi, auditApi, staffApi } from '@/lib/api';
-import type { OrgStaffMember } from '@/lib/actions';
+import { orgApi, patientApi, providerApi, auditApi, staffApi } from '@/lib/api';
+import type { OrgStaffMember, VerificationDoc } from '@/lib/actions';
 import type { Organisation, Patient, Provider, Appointment, Order, Transaction } from '@/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
 
   // Staff management state
   const [localStaff,      setLocalStaff]      = useState<OrgStaffMember[]>([]);
-  const [staffLoading,    setStaffLoading]    = useState(false);
+  const [staffLoading,    setStaffLoading]    = useState(true);
   const [staffRoleFilter, setStaffRoleFilter] = useState<string>('all');
   const [addStaffOpen,    setAddStaffOpen]    = useState(false);
   const [staffForm,       setStaffForm]       = useState(emptyStaffForm);
@@ -106,37 +106,55 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
   const [addedCreds,      setAddedCreds]      = useState<(OrgStaffMember & { loginPhone: string }) | null>(null);
   const [staffError,      setStaffError]      = useState<string | null>(null);
 
+  // KYC documents. The verification-docs bucket is private, so these arrive as
+  // short-lived signed URLs generated server-side — the browser cannot read the
+  // storage paths directly.
+  const [docs,        setDocs]        = useState<VerificationDoc[]>([]);
+  const [docsLoading, setDocsLoading] = useState(true);
+
+  // One scoped call. This used to pull six entire tables and filter them in the
+  // browser — and matched appointments/orders/transactions on organisation NAME,
+  // so two orgs sharing a name saw each other's rows. Now Postgres filters by
+  // organisation_id and returns only this org's data.
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const [orgs, provs, pats, appts, ords, txns] = await Promise.all([
-          orgApi.list(), providerApi.list(), patientApi.list(),
-          appointmentApi.list(), orderApi.list(), transactionApi.list(),
-        ]);
-        const found = orgs.find(o => o.id === id) ?? null;
-        setOrg(found);
-        setLocalProviders(provs.filter(p => p.orgId === id));
-        setLocalPatients(pats.filter(p => p.orgId === id));
-        if (found) {
-          setOrgAppointments(appts.filter(a => a.orgName === found.name));
-          setOrgOrders(ords.filter(o => o.orgName === found.name));
-          setOrgTransactions(txns.filter(t => t.orgName === found.name));
-        }
+        const d = await orgApi.detail(id);
+        if (cancelled) return;
+        setOrg(d.org);
+        setLocalProviders(d.providers);
+        setLocalPatients(d.patients);
+        setOrgAppointments(d.appointments);
+        setOrgOrders(d.orders);
+        setOrgTransactions(d.transactions);
       } catch (e) {
         console.error('Failed to load organisation detail:', e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  // Verification documents, signed on demand so the URLs stay fresh.
+  useEffect(() => {
+    let cancelled = false;
+    orgApi.documents(id)
+      .then((d) => { if (!cancelled) setDocs(d); })
+      .catch((e) => console.error('Failed to load verification documents:', e))
+      .finally(() => { if (!cancelled) setDocsLoading(false); });
+    return () => { cancelled = true; };
   }, [id]);
 
   // Load org staff separately (dedicated endpoint for this org)
   useEffect(() => {
-    setStaffLoading(true);
+    let cancelled = false;
     staffApi.listByOrg(id)
-      .then(setLocalStaff)
+      .then((rows) => { if (!cancelled) setLocalStaff(rows); })
       .catch((e) => console.error('Failed to load org staff:', e))
-      .finally(() => setStaffLoading(false));
+      .finally(() => { if (!cancelled) setStaffLoading(false); });
+    return () => { cancelled = true; };
   }, [id]);
 
   if (loading) {
@@ -480,6 +498,70 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
+          </Card>
+
+          {/* Verification documents (KYC).
+              These were uploaded at signup into the PRIVATE verification-docs
+              bucket. The admin panel never showed them: listOnboarding() didn't
+              select document_urls and approveOnboarding() didn't copy them onto
+              the organisation, so the only trace was a green tick next to a raw
+              slot key. */}
+          <Card padding="lg" className="lg:col-span-2">
+            <CardHeader><CardTitle>Verification Documents</CardTitle></CardHeader>
+            {docsLoading ? (
+              <p className="text-xs text-text-muted">Loading documents…</p>
+            ) : docs.length === 0 ? (
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-xs text-text-secondary">
+                  No verification documents on file. Organisations created directly
+                  in the admin panel skip the signup wizard, and applications
+                  approved before documents were carried across kept their files on
+                  the onboarding record only.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {docs.map((doc) => (
+                  <div
+                    key={doc.label}
+                    className={cn(
+                      'flex items-center gap-3 p-3 rounded-xl border',
+                      doc.url ? 'border-border bg-surface-2' : 'border-warning/40 bg-warning-soft',
+                    )}
+                  >
+                    <span className={cn(
+                      'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                      doc.url ? 'bg-primary-soft' : 'bg-warning-soft',
+                    )}>
+                      {doc.url
+                        ? <FileText className="w-4 h-4 text-primary" />
+                        : <AlertTriangle className="w-4 h-4 text-warning" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-700 text-text truncate">{doc.label}</p>
+                      {doc.url ? (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-700 text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
+                        >
+                          View document <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <p className="text-[11px] text-warning font-600 mt-0.5">File missing</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {docs.length > 0 && (
+              <p className="text-[11px] text-text-muted mt-3">
+                Links are signed and expire after one hour. Reload the page to refresh them.
+              </p>
+            )}
           </Card>
 
           <Card padding="lg" className="lg:col-span-2">

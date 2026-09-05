@@ -8,7 +8,8 @@ import { COLORS } from '../constants/theme';
 import { CustomButton } from '../components/CustomButton';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
-import { signInWithPhone, resolveRole, lookupPhoneAccount } from '../../../lib/supabase';
+import { supabase, signInWithPhone, resolveRole, lookupPhoneAccount, BLOCK_MESSAGE_KEY } from '../../../lib/supabase';
+import { TEST_OTP } from '../../../lib/env';
 
 const OTP_LENGTH = 4;
 const PHONE_RE = /^[6-9]\d{9}$/;
@@ -86,8 +87,8 @@ export default function Login({ navigation }) {
 
   const handleVerify = async () => {
     if (!otpComplete || loading) return;
-    if (otpValue !== '1111') {
-      setOtpError(t('login_err_otp'));
+    if (otpValue !== TEST_OTP) {
+      setOtpError(t('login_err_otp', { code: TEST_OTP }));
       return;
     }
     setLoading(true);
@@ -97,6 +98,12 @@ export default function Login({ navigation }) {
       const userData = await resolveRole();
       if (!userData || userData.role !== 'rmp') {
         setOtpError(t('rmp_err_not_rmp'));
+        return;
+      }
+      // Suspended from the admin panel — no dashboard.
+      if (userData.blocked) {
+        setOtpError(t(BLOCK_MESSAGE_KEY[userData.blockedReason] || 'rmp_err_generic'));
+        await supabase.auth.signOut();
         return;
       }
       login(userData);
@@ -148,7 +155,7 @@ export default function Login({ navigation }) {
 
               <View style={styles.hintBox}>
                 <Ionicons name="information-circle-outline" size={15} color={COLORS.primary} />
-                <Text style={styles.hintText}>{t('rmp_test_hint')}</Text>
+                <Text style={styles.hintText}>{t('rmp_test_hint', { code: TEST_OTP })}</Text>
               </View>
 
               <CustomButton
@@ -168,7 +175,7 @@ export default function Login({ navigation }) {
           ) : (
             <>
               <Text style={styles.title}>{t('login_enter_otp')}</Text>
-              <Text style={styles.subtitle}>{t('rmp_otp_sent', { phone })}</Text>
+              <Text style={styles.subtitle}>{t('rmp_otp_sent', { phone, code: TEST_OTP })}</Text>
 
               <View style={styles.otpRow}>
                 {otp.map((d, i) => (

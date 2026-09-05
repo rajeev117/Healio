@@ -13,9 +13,9 @@ import {
 } from '../../../lib/supabase';
 import OtpVerifyModal from '../../../components/OtpVerifyModal';
 
-const PHONE_RE  = /^[6-9]\d{9}$/;
-const NAME_RE   = /^[A-Za-zऀ-ॿ\s.'-]{2,60}$/;
-const EMAIL_RE  = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Rules live in src/lib/validation so every signup form agrees. This screen
+// used to be the only one with a real name check; now it shares it.
+import { nameProblem, isValidPhone, isValidEmail } from '../../../lib/validation';
 
 function Field({ label, error, children }) {
   return (
@@ -34,15 +34,16 @@ function Field({ label, error, children }) {
 
 function validate({ name, phone, email }, t) {
   const errs = {};
-  if (!name.trim())                    errs.name = t('rmp_err_name_required');
-  else if (!NAME_RE.test(name.trim())) errs.name = t('rmp_err_name_invalid');
+  const nameIssue = nameProblem(name);
+  if (nameIssue === 'required')     errs.name = t('rmp_err_name_required');
+  else if (nameIssue === 'invalid') errs.name = t('rmp_err_name_invalid');
 
   const digits = phone.replace(/\D/g, '');
   if (!digits)                  errs.phone = t('rmp_err_phone_required');
-  else if (!PHONE_RE.test(digits)) errs.phone = t('rmp_err_phone_invalid');
+  else if (!isValidPhone(digits)) errs.phone = t('rmp_err_phone_invalid');
 
   // Address is optional. Email is optional, but validate format when provided.
-  if (email.trim() && !EMAIL_RE.test(email.trim())) errs.email = t('rmp_err_email_invalid');
+  if (!isValidEmail(email)) errs.email = t('rmp_err_email_invalid');
 
   return errs;
 }

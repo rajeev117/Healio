@@ -152,6 +152,37 @@ const roleForOrgType = (type, fallback) =>
   : type === 'clinic'   ? 'independent_doctor'
   : fallback;
 
+// Whether the admin panel has switched this provider off.
+//
+// organisations.status has existed since the first schema and the admin panel
+// has always written 'suspended' to it, but resolveRole() never selected it —
+// so "suspend" in admin did nothing and the provider kept trading. This is the
+// read side of that switch (migration-061).
+//
+// 'pending' is a provider whose onboarding was never approved; they are not
+// suspended, but they must not reach a dashboard either.
+export function accessVerdict(orgStatus, staffStatus) {
+  if (orgStatus === 'suspended') {
+    return { blocked: true, blockedReason: 'suspended_org' };
+  }
+  if (orgStatus === 'pending') {
+    return { blocked: true, blockedReason: 'pending_org' };
+  }
+  if (staffStatus === 'inactive') {
+    return { blocked: true, blockedReason: 'suspended_staff' };
+  }
+  return { blocked: false, blockedReason: null };
+}
+
+// Human-readable copy for each block reason, keyed for i18n.
+export const BLOCK_MESSAGE_KEY = {
+  suspended_org:   'blocked_suspended_org',
+  pending_org:     'blocked_pending_org',
+  suspended_staff: 'blocked_suspended_staff',
+  suspended_rmp:   'blocked_suspended_rmp',
+  banned_patient:  'blocked_banned_patient',
+};
+
 // Resolve who the logged-in user is.
 export async function resolveRole() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -166,6 +197,9 @@ export async function resolveRole() {
     hospitalName: s.organisations?.name || 'Hospital',
     hospitalCity: s.organisations?.city || '',
     orgType: s.organisations?.type || 'hospital',
+    // Suspension cascades: an individual doctor / lab / pharmacy switched off
+    // in the admin panel takes their whole staff list down with them.
+    ...accessVerdict(s.organisations?.status, s.status),
   });
   const fromOrg = (o) => ({
     userId: user.id, staffId: null, name: o.name,
@@ -173,24 +207,25 @@ export async function resolveRole() {
     hospitalId: o.id,
     hospitalName: o.name, hospitalCity: o.city || '',
     orgType: o.type || 'hospital',
+    ...accessVerdict(o.status, null),
   });
 
   // 1. Linked staff
   const { data: s1 } = await supabase
     .from('staff')
-    .select('id, staff_id, name, role, organisation_id, organisations(name, city, type)')
+    .select('id, staff_id, name, role, status, organisation_id, organisations(name, city, type, status)')
     .eq('user_id', user.id).maybeSingle();
   if (s1) return fromStaff(s1);
 
   // 2. Linked org admin
   const { data: o1 } = await supabase
-    .from('organisations').select('id, name, city, type')
+    .from('organisations').select('id, name, city, type, status')
     .eq('admin_user_id', user.id).maybeSingle();
   if (o1) return fromOrg(o1);
 
   // 3. Match by email (first login before linking)
   const { data: orgByEmail } = await supabase
-    .from('organisations').select('id, name, city, type')
+    .from('organisations').select('id, name, city, type, status')
     .eq('admin_email', user.email).maybeSingle();
   if (orgByEmail) {
     await supabase.from('organisations').update({ admin_user_id: user.id }).eq('id', orgByEmail.id);
@@ -199,7 +234,7 @@ export async function resolveRole() {
 
   const { data: staffByEmail } = await supabase
     .from('staff')
-    .select('id, staff_id, name, role, organisation_id, organisations(name, city, type)')
+    .select('id, staff_id, name, role, status, organisation_id, organisations(name, city, type, status)')
     .eq('email', user.email).maybeSingle();
   if (staffByEmail) {
     await supabase.from('staff').update({ user_id: user.id }).eq('id', staffByEmail.id);
@@ -229,6 +264,8 @@ export async function resolveRole() {
       rmpEmail: rmp.email || null,
       rmpRegNo: rmp.reg_no,
       rmpStatus: rmp.status,
+      blocked: rmp.status === 'suspended',
+      blockedReason: rmp.status === 'suspended' ? 'suspended_rmp' : null,
     };
   }
 
@@ -237,7 +274,7 @@ export async function resolveRole() {
   // phone/user happens to have both a provider and a patient identity.
   const { data: prof } = await supabase
     .from('profiles')
-    .select('id, name')
+    .select('id, name, status')
     .eq('id', user.id)
     .maybeSingle();
   if (prof) {
@@ -249,6 +286,9 @@ export async function resolveRole() {
       hospitalId: null,
       hospitalName: null,
       hospitalCity: null,
+      // The admin panel's "ban patient" writes profiles.status = 'banned'.
+      blocked: prof.status === 'banned',
+      blockedReason: prof.status === 'banned' ? 'banned_patient' : null,
     };
   }
 

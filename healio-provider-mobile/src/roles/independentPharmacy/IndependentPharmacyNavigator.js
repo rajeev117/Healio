@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from './constants/theme';
+import { withFeature, useFeatureEnabled, hiddenTabOptions } from '../../components/FeatureGate';
 
 import Home from './screens/Home';
 import Orders from './screens/Orders';
@@ -32,8 +33,21 @@ import OrderRequests from './screens/OrderRequests';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// Wrapped once at module scope: a component type created during render is a new
+// type every pass, which remounts the screen and loses its state.
+const GatedInventory        = withFeature('pharmacy_inventory',    Inventory,        'Inventory & Stock');
+const GatedEarnings         = withFeature('pharmacy_payouts',      Earnings,         'Earnings & Payouts');
+const GatedScanWalkIn       = withFeature('pharmacy_walkin_scan',  ScanWalkIn,       'Walk-in QR Scan');
+const GatedOrderReqQuote    = withFeature('pharmacy_order_quotes', OrderRequestQuote,'Order Requests & Quotes');
+const GatedFulfilment       = withFeature('pharmacy_fulfilment',   Fulfilment,       'Order Fulfilment');
+const GatedOrderRequests    = withFeature('pharmacy_order_quotes', OrderRequests,    'Order Requests & Quotes');
+
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  // Admin-controlled (migration-063). Tabs are hidden rather than removed so
+  // anything navigating to them by name still resolves.
+  const stockOn   = useFeatureEnabled('pharmacy_inventory');
+  const payoutsOn = useFeatureEnabled('pharmacy_payouts');
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -65,8 +79,10 @@ function MainTabs() {
     >
       <Tab.Screen name="Home"     component={Home}      options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Orders"   component={Orders}    options={{ tabBarLabel: 'Orders' }} />
-      <Tab.Screen name="Stock"    component={Inventory} options={{ tabBarLabel: 'Stock' }} />
-      <Tab.Screen name="Earnings" component={Earnings}  options={{ tabBarLabel: 'Payouts' }} />
+      <Tab.Screen name="Stock"    component={GatedInventory}
+        options={{ tabBarLabel: 'Stock', ...hiddenTabOptions(stockOn) }} />
+      <Tab.Screen name="Earnings" component={GatedEarnings}
+        options={{ tabBarLabel: 'Payouts', ...hiddenTabOptions(payoutsOn) }} />
       <Tab.Screen name="Profile"  component={Profile}   options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
@@ -77,10 +93,10 @@ export default function IndependentPharmacyNavigator({ initialRouteName = 'Main'
     <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="PharmacyQR" component={PharmacyQR} />
-      <Stack.Screen name="ScanWalkIn" component={ScanWalkIn} />
-      <Stack.Screen name="OrderRequestQuote" component={OrderRequestQuote} />
-      <Stack.Screen name="Fulfilment" component={Fulfilment} />
-      <Stack.Screen name="OrderRequests" component={OrderRequests} />
+      <Stack.Screen name="ScanWalkIn"        component={GatedScanWalkIn} />
+      <Stack.Screen name="OrderRequestQuote" component={GatedOrderReqQuote} />
+      <Stack.Screen name="Fulfilment"        component={GatedFulfilment} />
+      <Stack.Screen name="OrderRequests"     component={GatedOrderRequests} />
     </Stack.Navigator>
   );
 }

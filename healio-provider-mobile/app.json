@@ -11,20 +11,24 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Healio Provider uses your location to set your hospital's location on the map.",
         "NSCameraUsageDescription": "Healio Provider uses the camera to scan a patient's check-in QR code."
-      }
+      },
+      "bundleIdentifier": "com.healio.provider"
     },
     "android": {
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-        "CAMERA"
+        "CAMERA",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#821c03",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.healio.provider"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -58,7 +62,16 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#821c03",
+          "defaultChannel": "default"
+        }
+      ],
+      "expo-font"
     ]
   }
 }

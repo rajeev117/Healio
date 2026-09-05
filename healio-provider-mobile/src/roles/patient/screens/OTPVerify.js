@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import { COLORS, SPACING } from '../constants/theme';
-import { devSignIn, signUpOrIn, saveMyProfile } from '../services/supabase';
+import { supabase, devSignIn, signUpOrIn, saveMyProfile } from '../services/supabase';
+import { TEST_OTP } from '../services/env';
 
 export default function OTPVerify({ navigation, route }) {
   const OTP_LENGTH = 4;
@@ -76,7 +77,7 @@ export default function OTPVerify({ navigation, route }) {
   const handleVerify = async () => {
     if (!isComplete || submitting.current) return;
 
-    if (otp !== '1111') {
+    if (otp !== TEST_OTP) {
       showError('Use 1111 as the OTP for testing.');
       return;
     }
@@ -126,6 +127,20 @@ export default function OTPVerify({ navigation, route }) {
           showError(error.message || 'Could not sign in. Please try again.');
           return;
         }
+
+        // The admin panel's "ban patient" writes profiles.status = 'banned'.
+        // Nothing read it back before, so a banned account signed in as normal.
+        // Fails OPEN: a lookup error must never lock a real patient out.
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          const { data: prof } = await supabase
+            .from('profiles').select('status').eq('id', user?.id).maybeSingle();
+          if (prof?.status === 'banned') {
+            await supabase.auth.signOut();
+            showError('This account has been suspended. Contact Healio support.');
+            return;
+          }
+        } catch (_) { /* fail open */ }
 
         navigation.replace('ProfileSelector', { userName: name });
       }

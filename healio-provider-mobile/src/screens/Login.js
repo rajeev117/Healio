@@ -8,7 +8,8 @@ import { COLORS, SPACING } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { supabase, signInWithPhone, resolveRole, lookupPhoneAccount } from '../lib/supabase';
+import { supabase, signInWithPhone, resolveRole, lookupPhoneAccount, BLOCK_MESSAGE_KEY } from '../lib/supabase';
+import { TEST_OTP } from '../lib/env';
 import { useStore } from '../lib/store';
 import styles from './Login.styles';
 
@@ -87,8 +88,8 @@ export default function Login({ navigation }) {
   const handleVerify = async () => {
     if (!otpComplete || loading) return;
 
-    if (otpValue !== '1111') {
-      setOtpError(t('login_err_otp'));
+    if (otpValue !== TEST_OTP) {
+      setOtpError(t('login_err_otp', { code: TEST_OTP }));
       return;
     }
 
@@ -108,6 +109,16 @@ export default function Login({ navigation }) {
       const userData = await resolveRole();
       if (!userData) {
         setOtpError(t('login_err_not_registered'));
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
+
+      // Switched off from the admin panel (suspended org / deactivated staff /
+      // still-pending registration). Sign them straight back out so a stale
+      // session can't slip past this on the next cold start.
+      if (userData.blocked) {
+        setOtpError(t(BLOCK_MESSAGE_KEY[userData.blockedReason] || 'login_err_generic'));
         await supabase.auth.signOut();
         setLoading(false);
         return;
@@ -196,7 +207,7 @@ export default function Login({ navigation }) {
           ) : (
             <>
               <Text style={styles.title}>{t('login_enter_otp')}</Text>
-              <Text style={styles.subtitle}>{t('login_otp_sub', { phone })}</Text>
+              <Text style={styles.subtitle}>{t('login_otp_sub', { phone, code: TEST_OTP })}</Text>
 
               <View style={styles.otpRow}>
                 {otp.map((d, i) => (
